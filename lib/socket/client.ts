@@ -10,7 +10,8 @@ export function useSocket(auctionId: string) {
 
     useEffect(() => {
         // Initialize socket connection with reconnection settings
-        const socketInstance = io({
+        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin;
+        const socketInstance = io(socketUrl, {
             path: '/api/socketio',
             transports: ['websocket', 'polling'],
             reconnection: true,
