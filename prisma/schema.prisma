@@ -1,0 +1,172 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  name         String
+  username     String   @unique
+  wallet       Decimal  @default(10000) @db.Decimal(10, 2)
+  totalBudget  Decimal  @default(10000) @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  teamId       String?
+  team         Team?    @relation("TeamUsers", fields: [teamId], references: [id])
+
+  bids          Bid[]
+  wonAuctions   Auction[] @relation("WinnerRelation")
+  createdAuctions Auction[] @relation("CreatorRelation")
+
+  @@map("users")
+}
+
+model Auction {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  auctionType     AuctionType @default(PRODUCT)
+  startingPrice   Decimal  @db.Decimal(10, 2)
+  currentPrice    Decimal  @db.Decimal(10, 2)
+  minIncrement    Decimal  @db.Decimal(10, 2)
+  startTime       DateTime
+  endTime         DateTime
+  status          AuctionStatus @default(UPCOMING)
+  maxParticipants Int?
+  currency        String   @default("USD")
+  imageUrl        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // IPL Auction specific fields
+  teamBudget      Decimal?  @db.Decimal(10, 2) // Budget for each team
+  minSquadSize    Int?      // Minimum players each team must buy
+  maxSquadSize    Int?      // Maximum players each team can buy
+  currentPlayerId String?   // Currently being auctioned player
+  currentPlayer   Player?   @relation("CurrentPlayer", fields: [currentPlayerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  winnerId   String?
+  winner     User?   @relation("WinnerRelation", fields: [winnerId], references: [id])
+  
+  createdById String
+  createdBy   User   @relation("CreatorRelation", fields: [createdById], references: [id])
+
+  bids    Bid[]
+  teams   Team[]
+  players Player[]
+
+  @@map("auctions")
+}
+
+model Bid {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(10, 2)
+  timestamp DateTime @default(now())
+  isWinning Boolean  @default(false)
+
+  auctionId String
+  auction   Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  playerId  String?  // For team auctions - which player is being bid on
+  player    Player?  @relation(fields: [playerId], references: [id])
+
+  teamId    String?  // For team auctions - which team is bidding
+  team      Team?    @relation(fields: [teamId], references: [id])
+
+  @@map("bids")
+  @@index([auctionId])
+  @@index([userId])
+  @@index([playerId])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  shortName   String   // e.g., "MI", "CSK"
+  color       String   // Hex color for team branding
+  logo        String?  // Logo URL
+  budget      Decimal  @db.Decimal(10, 2)
+  totalBudget Decimal  @db.Decimal(10, 2)
+  squadSize   Int      @default(0) // Current number of players
+  auctionId   String
+  auction     Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  players Player[]
+  users   User[]   @relation("TeamUsers")
+  bids    Bid[]
+  playerInterests PlayerInterest[] // Players this team is interested in
+
+  @@unique([auctionId, name])
+  @@map("teams")
+}
+
+model Player {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  role        String?  // e.g., "Batsman", "Bowler", "All-rounder", "Wicket-keeper"
+  basePrice   Decimal  @db.Decimal(10, 2)
+  soldPrice   Decimal? @db.Decimal(10, 2)
+  status      PlayerStatus @default(UNSOLD)
+  imageUrl    String?
+  avatarUrl   String?  // Player avatar/photo URL
+  marqueeSet  Int?     // Marquee tier (1-5: 1=top tier, 5=low tier)
+  isStarPlayer Boolean @default(false) // Admin marked as priority player
+  auctionId   String
+  auction     Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  teamId      String?
+  team        Team?    @relation(fields: [teamId], references: [id])
+  isCurrentlyAuctioning Boolean @default(false) // Is this player currently being auctioned?
+  auctionOrder Int?    // Order in which players will be auctioned
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bids        Bid[]
+  currentAuctions Auction[] @relation("CurrentPlayer")
+  interestedTeams PlayerInterest[] // Teams interested in this player
+
+  @@map("players")
+}
+
+model PlayerInterest {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([playerId, teamId])
+  @@map("player_interests")
+}
+
+enum AuctionStatus {
+  UPCOMING
+  LIVE
+  ENDED
+}
+
+enum AuctionType {
+  PRODUCT
+  TEAM
+}
+
+enum PlayerStatus {
+  UNSOLD
+  SOLD
+}
