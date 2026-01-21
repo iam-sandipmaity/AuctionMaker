@@ -185,14 +185,14 @@ export default function AuctionStatsPage() {
             
             const canvas = await html2canvas(element, {
                 backgroundColor: '#000000',
-                scale: 2,
+                scale: 1.5,
                 logging: false,
                 useCORS: true
             });
             
             const link = document.createElement('a');
             link.download = `auction-stats-${new Date().getTime()}.png`;
-            link.href = canvas.toDataURL('image/png');
+            link.href = canvas.toDataURL('image/png', 0.8);
             link.click();
         } catch (error) {
             console.error('Error exporting PNG:', error);
@@ -207,21 +207,47 @@ export default function AuctionStatsPage() {
             const element = document.getElementById('stats-dashboard');
             if (!element) return;
             
+            // A4 dimensions in mm
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+            
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 10;
+            const contentWidth = pageWidth - (2 * margin);
+            
+            // Capture the full content
             const canvas = await html2canvas(element, {
                 backgroundColor: '#000000',
-                scale: 2,
+                scale: 1.5,
                 logging: false,
                 useCORS: true
             });
             
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-                unit: 'px',
-                format: [canvas.width, canvas.height]
-            });
+            const imgData = canvas.toDataURL('image/png', 0.7);
+            const imgWidth = contentWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
             
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            // Calculate how many pages we need
+            const contentHeight = pageHeight - (2 * margin);
+            let heightLeft = imgHeight;
+            let position = 0;
+            
+            // Add first page
+            pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight, undefined, 'FAST');
+            heightLeft -= contentHeight;
+            
+            // Add additional pages if needed
+            while (heightLeft > 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', margin, position + margin, imgWidth, imgHeight, undefined, 'FAST');
+                heightLeft -= contentHeight;
+            }
+            
             pdf.save(`auction-stats-${new Date().getTime()}.pdf`);
         } catch (error) {
             console.error('Error exporting PDF:', error);
