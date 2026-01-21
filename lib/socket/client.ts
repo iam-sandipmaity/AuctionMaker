@@ -10,15 +10,17 @@ export function useSocket(auctionId: string) {
 
     useEffect(() => {
         // Initialize socket connection with reconnection settings
-        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin;
-        const socketInstance = io(socketUrl, {
+        // Use undefined to auto-connect to current host (fixes IP access issue)
+        const socketInstance = io(undefined, {
             path: '/api/socketio',
             transports: ['websocket', 'polling'],
             reconnection: true,
-            reconnectionAttempts: 10,
+            reconnectionAttempts: Infinity, // Keep trying
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
             timeout: 20000,
+            // Add random delay to avoid thundering herd
+            randomizationFactor: 0.5,
         });
 
         socketInstance.on('connect', () => {
@@ -26,6 +28,17 @@ export function useSocket(auctionId: string) {
             setIsConnected(true);
             // Join the auction room
             socketInstance.emit('join:auction', auctionId);
+        });
+
+        // Handle ping requests from server (for activity tracking)
+        socketInstance.on('ping', () => {
+            socketInstance.emit('pong');
+        });
+
+        // Handle inactivity disconnect warning
+        socketInstance.on('disconnect:inactive', (data) => {
+            console.warn('⏱️ Disconnected due to inactivity:', data);
+            // Could show a notification to the user here
         });
 
         socketInstance.on('disconnect', (reason) => {
