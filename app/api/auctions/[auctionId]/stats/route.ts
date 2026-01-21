@@ -69,6 +69,9 @@ export async function GET(
         console.log('Unique player roles in auction:', uniqueRoles);
         console.log('Total players:', allPlayers.length, 'Sold:', soldPlayers.length);
 
+        // Helper function for role normalization (case-insensitive comparison)
+        const normalizeRole = (role: string | null) => role?.toUpperCase().trim() || '';
+
         const totalMoneySpent = soldPlayers.reduce((sum, p) => sum + (p.soldPrice ? Number(p.soldPrice) : 0), 0);
         const averagePlayerPrice = soldPlayers.length > 0 ? totalMoneySpent / soldPlayers.length : 0;
         
@@ -129,8 +132,6 @@ export async function GET(
         });
 
         // Role-wise distribution across auction (case-insensitive comparison)
-        const normalizeRole = (role: string | null) => role?.toUpperCase().trim() || '';
-        
         const roleStats = {
             BATSMAN: {
                 total: allPlayers.filter(p => normalizeRole(p.role) === 'BATSMAN').length,
