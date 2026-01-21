@@ -1,4 +1,3 @@
-import { Decimal } from '@prisma/client/runtime/library';
 import { getAuctionById } from '@/lib/db/auctions';
 import { getUserById } from '@/lib/db/users';
 import { getHighestBid } from '@/lib/db/bids';
@@ -60,23 +59,25 @@ export async function validateBid(
             ? parseFloat(auction.currentPrice.toString())
             : auction.currentPrice);
 
-    // Check if bid is higher than current price
-    if (amount <= currentPrice) {
-        return {
-            valid: false,
-            error: `Bid must be higher than current price ($${currentPrice.toFixed(2)})`
-        };
-    }
-
-    // Check minimum increment
     const minIncrement = typeof auction.minIncrement === 'object'
         ? parseFloat(auction.minIncrement.toString())
         : auction.minIncrement;
 
-    if (amount < currentPrice + minIncrement) {
+    // Round to 2 decimals to avoid floating point precision issues
+    const roundedAmount = Math.round(amount * 100) / 100;
+    const roundedCurrentPrice = Math.round(currentPrice * 100) / 100;
+    const roundedMinIncrement = Math.round(minIncrement * 100) / 100;
+
+    // For first bid, allow amount >= currentPrice (base price)
+    // For subsequent bids, require amount >= currentPrice + minIncrement
+    const minimumBid = highestBid 
+        ? roundedCurrentPrice + roundedMinIncrement
+        : roundedCurrentPrice;
+
+    if (roundedAmount < minimumBid) {
         return {
             valid: false,
-            error: `Bid must be at least $${(currentPrice + minIncrement).toFixed(2)}`
+            error: `Bid must be at least $${minimumBid.toFixed(2)}`
         };
     }
 
