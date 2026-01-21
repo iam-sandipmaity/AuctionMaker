@@ -81,6 +81,11 @@ A fully customizable, real-time multi-user auction bidding platform supporting b
    ```bash
    npm run db:push
    ```
+   
+   To reset the database (deletes all data):
+   ```bash
+   npx prisma migrate reset --force
+   ```
 
 5. **Run the development server**
    ```bash
@@ -232,6 +237,7 @@ Modify `tailwind.config.ts` for:
 - `npm run db:generate` - Generate Prisma client
 - `npm run db:push` - Push schema to database
 - `npm run db:studio` - Open Prisma Studio
+- `npx prisma migrate reset --force` - Reset database (deletes all data)
 
 ## Environment Variables
 
