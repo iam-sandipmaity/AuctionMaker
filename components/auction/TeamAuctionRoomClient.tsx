@@ -625,6 +625,18 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                     >
                         🏆 TEAMS
                     </Button>
+                    <a 
+                        href={`/auction/${auction.id}/stats`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <Button
+                            variant="secondary"
+                            className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2"
+                        >
+                            📊 ANALYTICS
+                        </Button>
+                    </a>
                 </div>
             </div>
 
