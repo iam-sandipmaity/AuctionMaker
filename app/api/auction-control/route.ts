@@ -269,6 +269,10 @@ async function handleEndPlayerAuction(body: any, userId: string) {
         );
     }
 
+    // Variables to store data for socket events
+    let soldTeamData: any = null;
+    let soldAmount = 0;
+
     if (validatedData.sold && validatedData.winningBidId) {
         // Get the winning bid
         const winningBid = await prisma.bid.findUnique({
@@ -301,7 +305,7 @@ async function handleEndPlayerAuction(body: any, userId: string) {
         const team = winningBid.team;
         const newBudget = new Decimal(team.budget.toString()).minus(winningBid.amount);
         
-        await prisma.team.update({
+        const updatedTeam = await prisma.team.update({
             where: { id: winningBid.teamId },
             data: {
                 budget: newBudget,
@@ -314,6 +318,10 @@ async function handleEndPlayerAuction(body: any, userId: string) {
             where: { id: validatedData.winningBidId },
             data: { isWinning: true },
         });
+        
+        // Store updated team for socket event
+        soldTeamData = updatedTeam;
+        soldAmount = Number(winningBid.amount);
     } else {
         // Player went unsold
         await prisma.player.update({
@@ -336,29 +344,21 @@ async function handleEndPlayerAuction(body: any, userId: string) {
     // Emit WebSocket event for player sold/unsold
     const io = (global as any).io;
     if (io) {
-        if (validatedData.sold && validatedData.winningBidId) {
-            const winningBid = await prisma.bid.findUnique({
-                where: { id: validatedData.winningBidId },
-                include: {
-                    team: {
-                        select: {
-                            id: true,
-                            name: true,
-                            shortName: true,
-                            color: true,
-                        },
-                    },
+        if (validatedData.sold && soldTeamData) {
+            io.to(`auction:${validatedData.auctionId}`).emit('player:sold', {
+                playerId: validatedData.playerId,
+                teamId: soldTeamData.id,
+                amount: soldAmount,
+                team: {
+                    id: soldTeamData.id,
+                    name: soldTeamData.name,
+                    shortName: soldTeamData.shortName,
+                    color: soldTeamData.color,
+                    budget: Number(soldTeamData.budget),
+                    squadSize: soldTeamData.squadSize,
                 },
             });
-            if (winningBid) {
-                io.to(`auction:${validatedData.auctionId}`).emit('player:sold', {
-                    playerId: validatedData.playerId,
-                    teamId: winningBid.teamId,
-                    amount: Number(winningBid.amount),
-                    team: winningBid.team,
-                });
-                console.log('📢 Emitted player:sold event to auction:', validatedData.auctionId);
-            }
+            console.log('📢 Emitted player:sold event with updated team data to auction:', validatedData.auctionId);
         } else {
             // Player went unsold
             io.to(`auction:${validatedData.auctionId}`).emit('player:unsold', {

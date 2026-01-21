@@ -25,7 +25,7 @@ export async function GET() {
     try {
         const auctions = await getAuctions();
         return NextResponse.json({ success: true, data: auctions });
-    } catch (error) {
+    } catch {
         return NextResponse.json(
             { success: false, error: 'Failed to fetch auctions' },
             { status: 500 }
