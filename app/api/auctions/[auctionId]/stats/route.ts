@@ -64,6 +64,11 @@ export async function GET(
         const unsoldPlayers = allPlayers.filter(p => p.status === 'UNSOLD');
         const availablePlayers = allPlayers.filter(p => p.status !== 'SOLD' && p.status !== 'UNSOLD');
 
+        // Debug: Log unique roles to see what we have
+        const uniqueRoles = [...new Set(allPlayers.map(p => p.role).filter(Boolean))];
+        console.log('Unique player roles in auction:', uniqueRoles);
+        console.log('Total players:', allPlayers.length, 'Sold:', soldPlayers.length);
+
         const totalMoneySpent = soldPlayers.reduce((sum, p) => sum + (p.soldPrice ? Number(p.soldPrice) : 0), 0);
         const averagePlayerPrice = soldPlayers.length > 0 ? totalMoneySpent / soldPlayers.length : 0;
         
@@ -75,7 +80,12 @@ export async function GET(
         // Calculate average prices by role
         const avgPriceByRole: { [key: string]: number } = {};
         ['BATSMAN', 'BOWLER', 'ALLROUNDER', 'WICKETKEEPER'].forEach(role => {
-            const rolePlayers = soldPlayers.filter(p => p.role === role);
+            const rolePlayers = soldPlayers.filter(p => {
+                const normalized = normalizeRole(p.role);
+                return normalized === role || 
+                       (role === 'ALLROUNDER' && normalized === 'ALL-ROUNDER') ||
+                       (role === 'WICKETKEEPER' && normalized === 'WICKET-KEEPER');
+            });
             avgPriceByRole[role] = rolePlayers.length > 0 
                 ? rolePlayers.reduce((sum, p) => sum + Number(p.soldPrice || 0), 0) / rolePlayers.length 
                 : 0;
@@ -94,10 +104,10 @@ export async function GET(
 
             // Role distribution - count sold players by role for this team
             const roleDistribution = {
-                BATSMAN: team.players.filter(p => p.role === 'BATSMAN').length,
-                BOWLER: team.players.filter(p => p.role === 'BOWLER').length,
-                ALLROUNDER: team.players.filter(p => p.role === 'ALLROUNDER').length,
-                WICKETKEEPER: team.players.filter(p => p.role === 'WICKETKEEPER').length,
+                BATSMAN: team.players.filter(p => normalizeRole(p.role) === 'BATSMAN').length,
+                BOWLER: team.players.filter(p => normalizeRole(p.role) === 'BOWLER').length,
+                ALLROUNDER: team.players.filter(p => normalizeRole(p.role) === 'ALLROUNDER' || normalizeRole(p.role) === 'ALL-ROUNDER').length,
+                WICKETKEEPER: team.players.filter(p => normalizeRole(p.role) === 'WICKETKEEPER' || normalizeRole(p.role) === 'WICKET-KEEPER').length,
             };
 
             return {
@@ -118,27 +128,29 @@ export async function GET(
             };
         });
 
-        // Role-wise distribution across auction
+        // Role-wise distribution across auction (case-insensitive comparison)
+        const normalizeRole = (role: string | null) => role?.toUpperCase().trim() || '';
+        
         const roleStats = {
             BATSMAN: {
-                total: allPlayers.filter(p => p.role === 'BATSMAN').length,
-                sold: soldPlayers.filter(p => p.role === 'BATSMAN').length,
-                unsold: unsoldPlayers.filter(p => p.role === 'BATSMAN').length,
+                total: allPlayers.filter(p => normalizeRole(p.role) === 'BATSMAN').length,
+                sold: soldPlayers.filter(p => normalizeRole(p.role) === 'BATSMAN').length,
+                unsold: unsoldPlayers.filter(p => normalizeRole(p.role) === 'BATSMAN').length,
             },
             BOWLER: {
-                total: allPlayers.filter(p => p.role === 'BOWLER').length,
-                sold: soldPlayers.filter(p => p.role === 'BOWLER').length,
-                unsold: unsoldPlayers.filter(p => p.role === 'BOWLER').length,
+                total: allPlayers.filter(p => normalizeRole(p.role) === 'BOWLER').length,
+                sold: soldPlayers.filter(p => normalizeRole(p.role) === 'BOWLER').length,
+                unsold: unsoldPlayers.filter(p => normalizeRole(p.role) === 'BOWLER').length,
             },
             ALLROUNDER: {
-                total: allPlayers.filter(p => p.role === 'ALLROUNDER').length,
-                sold: soldPlayers.filter(p => p.role === 'ALLROUNDER').length,
-                unsold: unsoldPlayers.filter(p => p.role === 'ALLROUNDER').length,
+                total: allPlayers.filter(p => normalizeRole(p.role) === 'ALLROUNDER' || normalizeRole(p.role) === 'ALL-ROUNDER').length,
+                sold: soldPlayers.filter(p => normalizeRole(p.role) === 'ALLROUNDER' || normalizeRole(p.role) === 'ALL-ROUNDER').length,
+                unsold: unsoldPlayers.filter(p => normalizeRole(p.role) === 'ALLROUNDER' || normalizeRole(p.role) === 'ALL-ROUNDER').length,
             },
             WICKETKEEPER: {
-                total: allPlayers.filter(p => p.role === 'WICKETKEEPER').length,
-                sold: soldPlayers.filter(p => p.role === 'WICKETKEEPER').length,
-                unsold: unsoldPlayers.filter(p => p.role === 'WICKETKEEPER').length,
+                total: allPlayers.filter(p => normalizeRole(p.role) === 'WICKETKEEPER' || normalizeRole(p.role) === 'WICKET-KEEPER').length,
+                sold: soldPlayers.filter(p => normalizeRole(p.role) === 'WICKETKEEPER' || normalizeRole(p.role) === 'WICKET-KEEPER').length,
+                unsold: unsoldPlayers.filter(p => normalizeRole(p.role) === 'WICKETKEEPER' || normalizeRole(p.role) === 'WICKET-KEEPER').length,
             },
         };
 
@@ -193,10 +205,10 @@ export async function GET(
         const mostBalancedTeam = teams
             .map(team => {
                 const roles = {
-                    BATSMAN: team.players.filter(p => p.role === 'BATSMAN').length,
-                    BOWLER: team.players.filter(p => p.role === 'BOWLER').length,
-                    ALLROUNDER: team.players.filter(p => p.role === 'ALLROUNDER').length,
-                    WICKETKEEPER: team.players.filter(p => p.role === 'WICKETKEEPER').length,
+                    BATSMAN: team.players.filter(p => normalizeRole(p.role) === 'BATSMAN').length,
+                    BOWLER: team.players.filter(p => normalizeRole(p.role) === 'BOWLER').length,
+                    ALLROUNDER: team.players.filter(p => normalizeRole(p.role) === 'ALLROUNDER' || normalizeRole(p.role) === 'ALL-ROUNDER').length,
+                    WICKETKEEPER: team.players.filter(p => normalizeRole(p.role) === 'WICKETKEEPER' || normalizeRole(p.role) === 'WICKET-KEEPER').length,
                 };
                 const values = Object.values(roles);
                 const avg = values.reduce((a, b) => a + b, 0) / values.length;
