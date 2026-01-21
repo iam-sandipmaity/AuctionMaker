@@ -126,15 +126,13 @@ export function useSocket(auctionId: string) {
             mountedRef.current = false;
             // Only disconnect if component is truly unmounting
             // Give it a small delay to handle React Strict Mode remounts
-            const timer = setTimeout(() => {
+            setTimeout(() => {
                 if (socketRef.current && !mountedRef.current) {
                     socketRef.current.emit('leave:auction', auctionId);
                     socketRef.current.disconnect();
                     socketRef.current = null;
                 }
             }, 100);
-
-            return () => clearTimeout(timer);
         };
     }, [auctionId]);
 
