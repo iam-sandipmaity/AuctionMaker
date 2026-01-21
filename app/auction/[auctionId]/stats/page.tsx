@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface Player {
     id: string;
@@ -94,6 +96,7 @@ export default function AuctionStatsPage() {
     const [loading, setLoading] = useState(true);
     const [modalData, setModalData] = useState<{ title: string; players: Player[] } | null>(null);
     const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+    const [isExporting, setIsExporting] = useState(false);
 
     const fetchStats = async () => {
         try {
@@ -174,6 +177,59 @@ export default function AuctionStatsPage() {
         openModal(title, filtered);
     };
 
+    const exportAsPNG = async () => {
+        setIsExporting(true);
+        try {
+            const element = document.getElementById('stats-dashboard');
+            if (!element) return;
+            
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#000000',
+                scale: 2,
+                logging: false,
+                useCORS: true
+            });
+            
+            const link = document.createElement('a');
+            link.download = `auction-stats-${new Date().getTime()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (error) {
+            console.error('Error exporting PNG:', error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const exportAsPDF = async () => {
+        setIsExporting(true);
+        try {
+            const element = document.getElementById('stats-dashboard');
+            if (!element) return;
+            
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#000000',
+                scale: 2,
+                logging: false,
+                useCORS: true
+            });
+            
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save(`auction-stats-${new Date().getTime()}.pdf`);
+        } catch (error) {
+            console.error('Error exporting PDF:', error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
@@ -200,7 +256,7 @@ export default function AuctionStatsPage() {
 
     return (
         <div className="min-h-screen bg-[var(--background)] py-8 px-4">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-7xl mx-auto" id="stats-dashboard">
                 {/* Modal */}
                 {modalData && (
                     <div 
@@ -264,12 +320,30 @@ export default function AuctionStatsPage() {
 
                 {/* Header */}
                 <div className="mb-8">
-                    <Link
-                        href={`/auction/${auctionId}`}
-                        className="font-mono text-[var(--accent)] hover:underline mb-4 inline-flex items-center gap-2 uppercase text-sm font-bold"
-                    >
-                        ← Back to Auction
-                    </Link>
+                    <div className="flex items-center justify-between mb-4">
+                        <Link
+                            href={`/auction/${auctionId}`}
+                            className="font-mono text-[var(--accent)] hover:underline inline-flex items-center gap-2 uppercase text-sm font-bold"
+                        >
+                            ← Back to Auction
+                        </Link>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={exportAsPNG}
+                                disabled={isExporting}
+                                className="card px-4 py-2 font-mono text-xs uppercase font-bold text-[var(--foreground)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors disabled:opacity-50"
+                            >
+                                {isExporting ? '⏳ Exporting...' : '📸 Export PNG'}
+                            </button>
+                            <button
+                                onClick={exportAsPDF}
+                                disabled={isExporting}
+                                className="card px-4 py-2 font-mono text-xs uppercase font-bold text-[var(--foreground)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors disabled:opacity-50"
+                            >
+                                {isExporting ? '⏳ Exporting...' : '📄 Export PDF'}
+                            </button>
+                        </div>
+                    </div>
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-2">
                         {stats.auction.title}
                     </h1>
