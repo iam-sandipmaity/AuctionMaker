@@ -4,6 +4,16 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
+interface Player {
+    id: string;
+    name: string;
+    role: string;
+    soldPrice: number | null;
+    teamId: string | null;
+    teamName?: string;
+    teamColor?: string;
+}
+
 interface AuctionStats {
     auction: {
         id: string;
@@ -82,6 +92,8 @@ export default function AuctionStatsPage() {
     const auctionId = params.auctionId as string;
     const [stats, setStats] = useState<AuctionStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [modalData, setModalData] = useState<{ title: string; players: Player[] } | null>(null);
+    const [allPlayers, setAllPlayers] = useState<Player[]>([]);
 
     const fetchStats = async () => {
         try {
@@ -97,8 +109,21 @@ export default function AuctionStatsPage() {
         }
     };
 
+    const fetchAllPlayers = async () => {
+        try {
+            const response = await fetch(`/api/players?auctionId=${auctionId}`);
+            const result = await response.json();
+            if (result.success) {
+                setAllPlayers(result.players || []);
+            }
+        } catch (error) {
+            console.error('Error fetching players:', error);
+        }
+    };
+
     useEffect(() => {
         fetchStats();
+        fetchAllPlayers();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [auctionId]);
 
@@ -108,6 +133,35 @@ export default function AuctionStatsPage() {
             currency: 'INR',
             maximumFractionDigits: 0,
         }).format(amount);
+    };
+
+    const normalizeRole = (role: string) => role.toUpperCase().trim();
+
+    const openModal = (title: string, players: Player[]) => {
+        setModalData({ title, players });
+    };
+
+    const closeModal = () => {
+        setModalData(null);
+    };
+
+    const showRolePlayers = (role: string) => {
+        const normalizedRole = normalizeRole(role);
+        const filtered = allPlayers.filter(p => normalizeRole(p.role) === normalizedRole);
+        openModal(`${role} Players`, filtered);
+    };
+
+    const showTeamPlayers = (teamId: string, teamName: string) => {
+        const filtered = allPlayers.filter(p => p.teamId === teamId);
+        openModal(`${teamName} Squad`, filtered);
+    };
+
+    const showPriceRangePlayers = (title: string, min: number, max: number) => {
+        const filtered = allPlayers.filter(p => {
+            if (!p.soldPrice) return false;
+            return p.soldPrice >= min && p.soldPrice <= max;
+        });
+        openModal(title, filtered);
     };
 
     if (loading) {
@@ -137,6 +191,67 @@ export default function AuctionStatsPage() {
     return (
         <div className="min-h-screen bg-[var(--background)] py-8 px-4">
             <div className="max-w-7xl mx-auto">
+                {/* Modal */}
+                {modalData && (
+                    <div 
+                        className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+                        onClick={closeModal}
+                    >
+                        <div 
+                            className="card max-w-4xl w-full max-h-[80vh] overflow-auto p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)]">
+                                    {modalData.title}
+                                </h2>
+                                <button
+                                    onClick={closeModal}
+                                    className="text-[var(--foreground)] text-3xl font-bold hover:text-[var(--accent)] transition-colors px-4"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            
+                            {modalData.players.length === 0 ? (
+                                <p className="font-mono text-[var(--muted)]">No players found</p>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {modalData.players.map(player => (
+                                        <div key={player.id} className="border-2 border-[var(--border)] p-4">
+                                            <div className="font-[var(--font-grotesk)] font-bold text-[var(--foreground)] text-lg mb-1">
+                                                {player.name}
+                                            </div>
+                                            <div className="font-mono text-[var(--muted)] text-xs mb-2 uppercase">
+                                                {player.role}
+                                            </div>
+                                            {player.soldPrice ? (
+                                                <>
+                                                    <div className="font-mono text-[var(--accent)] font-bold">
+                                                        {formatCurrency(player.soldPrice)}
+                                                    </div>
+                                                    {player.teamName && (
+                                                        <div 
+                                                            className="font-mono text-xs mt-1"
+                                                            style={{ color: player.teamColor || 'var(--foreground)' }}
+                                                        >
+                                                            {player.teamName}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="font-mono text-[var(--muted)] text-sm">
+                                                    UNSOLD
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <div className="mb-8">
                     <Link
@@ -269,11 +384,16 @@ export default function AuctionStatsPage() {
                     <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6">💵 AVERAGE PRICE BY ROLE</h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {Object.entries(overview.avgPriceByRole).map(([role, avgPrice]) => (
-                            <div key={role} className="card p-4 text-center">
+                            <div 
+                                key={role} 
+                                className="card p-4 text-center cursor-pointer hover:border-[var(--accent)] transition-colors"
+                                onClick={() => showRolePlayers(role)}
+                            >
                                 <div className="text-xs font-mono text-[var(--muted)] uppercase mb-2">{role}</div>
                                 <div className="text-2xl font-bold font-mono text-[var(--accent)]">
                                     {formatCurrency(avgPrice)}
                                 </div>
+                                <div className="text-[10px] font-mono text-[var(--muted)] mt-2">👆 Click to view</div>
                             </div>
                         ))}
                     </div>
@@ -283,25 +403,41 @@ export default function AuctionStatsPage() {
                 <div className="card p-6 mb-8">
                     <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6">💰 PRICE RANGE DISTRIBUTION</h2>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="card p-4 text-center">
+                        <div 
+                            className="card p-4 text-center cursor-pointer hover:border-[var(--accent)] transition-colors"
+                            onClick={() => showPriceRangePlayers('Budget Players (< ₹5L)', 0, 500000)}
+                        >
                             <div className="text-3xl font-bold text-[var(--accent)] mb-2">{priceRanges.budget}</div>
                             <div className="text-[var(--foreground)] font-mono font-bold uppercase text-sm">Budget</div>
                             <div className="text-[var(--muted)] font-mono text-xs mt-1">&lt; ₹5L</div>
+                            <div className="text-[10px] font-mono text-[var(--muted)] mt-2">👆 Click to view</div>
                         </div>
-                        <div className="card p-4 text-center">
+                        <div 
+                            className="card p-4 text-center cursor-pointer hover:border-[var(--accent)] transition-colors"
+                            onClick={() => showPriceRangePlayers('Mid-Range Players (₹5L - ₹20L)', 500000, 2000000)}
+                        >
                             <div className="text-3xl font-bold text-[var(--accent)] mb-2">{priceRanges.midRange}</div>
                             <div className="text-[var(--foreground)] font-mono font-bold uppercase text-sm">Mid-Range</div>
                             <div className="text-[var(--muted)] font-mono text-xs mt-1">₹5L - ₹20L</div>
+                            <div className="text-[10px] font-mono text-[var(--muted)] mt-2">👆 Click to view</div>
                         </div>
-                        <div className="card p-4 text-center">
+                        <div 
+                            className="card p-4 text-center cursor-pointer hover:border-[var(--accent)] transition-colors"
+                            onClick={() => showPriceRangePlayers('Premium Players (₹20L - ₹50L)', 2000000, 5000000)}
+                        >
                             <div className="text-3xl font-bold text-[var(--accent)] mb-2">{priceRanges.premium}</div>
                             <div className="text-[var(--foreground)] font-mono font-bold uppercase text-sm">Premium</div>
                             <div className="text-[var(--muted)] font-mono text-xs mt-1">₹20L - ₹50L</div>
+                            <div className="text-[10px] font-mono text-[var(--muted)] mt-2">👆 Click to view</div>
                         </div>
-                        <div className="card p-4 text-center">
+                        <div 
+                            className="card p-4 text-center cursor-pointer hover:border-[var(--accent)] transition-colors"
+                            onClick={() => showPriceRangePlayers('Superstar Players (₹50L+)', 5000000, Infinity)}
+                        >
                             <div className="text-3xl font-bold text-[var(--accent)] mb-2">{priceRanges.superstar}</div>
                             <div className="text-[var(--foreground)] font-mono font-bold uppercase text-sm">Superstar</div>
                             <div className="text-[var(--muted)] font-mono text-xs mt-1">₹50L+</div>
+                            <div className="text-[10px] font-mono text-[var(--muted)] mt-2">👆 Click to view</div>
                         </div>
                     </div>
                 </div>
@@ -311,7 +447,11 @@ export default function AuctionStatsPage() {
                     <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6">🎭 ROLE DISTRIBUTION</h2>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         {Object.entries(roleStats).map(([role, data]) => (
-                            <div key={role} className="card p-4">
+                            <div 
+                                key={role} 
+                                className="card p-4 cursor-pointer hover:border-[var(--accent)] transition-colors"
+                                onClick={() => showRolePlayers(role)}
+                            >
                                 <div className="text-lg font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-2 uppercase">{role}</div>
                                 <div className="space-y-1 text-sm font-mono">
                                     <div className="flex justify-between">
@@ -327,6 +467,7 @@ export default function AuctionStatsPage() {
                                         <span className="text-[var(--muted)] font-bold">{data.unsold}</span>
                                     </div>
                                 </div>
+                                <div className="text-[10px] font-mono text-[var(--muted)] mt-3 text-center">👆 Click to view</div>
                             </div>
                         ))}
                     </div>
@@ -392,7 +533,11 @@ export default function AuctionStatsPage() {
                     <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6">🏆 TEAM-WISE ANALYSIS</h2>
                     <div className="space-y-6">
                         {teamStats.map((team) => (
-                            <div key={team.id} className="card p-6">
+                            <div 
+                                key={team.id} 
+                                className="card p-6 cursor-pointer hover:border-[var(--accent)] transition-colors"
+                                onClick={() => showTeamPlayers(team.id, team.name)}
+                            >
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div
@@ -403,6 +548,7 @@ export default function AuctionStatsPage() {
                                             }}
                                         />
                                         <h3 className="text-xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)]">{team.name}</h3>
+                                        <span className="text-[10px] font-mono text-[var(--muted)]">👆 Click to view squad</span>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-xs font-mono text-[var(--muted)] uppercase">Squad Size</div>
