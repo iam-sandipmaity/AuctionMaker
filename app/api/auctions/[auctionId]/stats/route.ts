@@ -66,6 +66,20 @@ export async function GET(
 
         const totalMoneySpent = soldPlayers.reduce((sum, p) => sum + (p.soldPrice ? Number(p.soldPrice) : 0), 0);
         const averagePlayerPrice = soldPlayers.length > 0 ? totalMoneySpent / soldPlayers.length : 0;
+        
+        // Calculate total budget pool
+        const totalBudgetPool = teams.reduce((sum, t) => sum + Number(t.totalBudget), 0);
+        const totalRemainingBudget = teams.reduce((sum, t) => sum + Number(t.budget), 0);
+        const auctionCompletionPercent = allPlayers.length > 0 ? (soldPlayers.length / allPlayers.length) * 100 : 0;
+        
+        // Calculate average prices by role
+        const avgPriceByRole: { [key: string]: number } = {};
+        ['BATSMAN', 'BOWLER', 'ALLROUNDER', 'WICKETKEEPER'].forEach(role => {
+            const rolePlayers = soldPlayers.filter(p => p.role === role);
+            avgPriceByRole[role] = rolePlayers.length > 0 
+                ? rolePlayers.reduce((sum, p) => sum + Number(p.soldPrice || 0), 0) / rolePlayers.length 
+                : 0;
+        });
 
         // Team statistics
         const teamStats = teams.map(team => {
@@ -156,6 +170,40 @@ export async function GET(
                     teamColor: team?.color,
                 };
             });
+        
+        // Team spending comparison (sorted by spending)
+        const teamSpendingComparison = teams
+            .map(team => {
+                const spent = team.players.reduce((sum, p) => sum + Number(p.soldPrice || 0), 0);
+                return {
+                    id: team.id,
+                    name: team.shortName,
+                    color: team.color,
+                    spent,
+                    squadSize: team.squadSize,
+                };
+            })
+            .sort((a, b) => b.spent - a.spent);
+        
+        // Highest and lowest spenders
+        const highestSpender = teamSpendingComparison[0];
+        const lowestSpender = teamSpendingComparison[teamSpendingComparison.length - 1];
+        
+        // Most balanced team (closest to equal role distribution)
+        const mostBalancedTeam = teams
+            .map(team => {
+                const roles = {
+                    BATSMAN: team.players.filter(p => p.role === 'BATSMAN').length,
+                    BOWLER: team.players.filter(p => p.role === 'BOWLER').length,
+                    ALLROUNDER: team.players.filter(p => p.role === 'ALLROUNDER').length,
+                    WICKETKEEPER: team.players.filter(p => p.role === 'WICKETKEEPER').length,
+                };
+                const values = Object.values(roles);
+                const avg = values.reduce((a, b) => a + b, 0) / values.length;
+                const variance = values.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / values.length;
+                return { name: team.shortName, color: team.color, balanceScore: 100 - Math.sqrt(variance) * 10 };
+            })
+            .sort((a, b) => b.balanceScore - a.balanceScore)[0];
 
         return NextResponse.json({
             success: true,
@@ -174,11 +222,21 @@ export async function GET(
                     totalMoneySpent,
                     averagePlayerPrice: Math.round(averagePlayerPrice),
                     totalTeams: teams.length,
+                    totalBudgetPool,
+                    totalRemainingBudget,
+                    auctionCompletionPercent: Math.round(auctionCompletionPercent * 10) / 10,
+                    avgPriceByRole,
                 },
                 teamStats,
                 roleStats,
                 priceRanges,
                 mostExpensivePlayers,
+                teamSpendingComparison,
+                insights: {
+                    highestSpender,
+                    lowestSpender,
+                    mostBalancedTeam,
+                },
             },
         });
     } catch (error) {

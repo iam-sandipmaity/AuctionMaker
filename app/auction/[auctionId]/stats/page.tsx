@@ -19,6 +19,10 @@ interface AuctionStats {
         totalMoneySpent: number;
         averagePlayerPrice: number;
         totalTeams: number;
+        totalBudgetPool: number;
+        totalRemainingBudget: number;
+        auctionCompletionPercent: number;
+        avgPriceByRole: { [key: string]: number };
     };
     teamStats: TeamStat[];
     roleStats: {
@@ -37,6 +41,18 @@ interface AuctionStats {
         teamName: string;
         teamColor: string;
     }[];
+    teamSpendingComparison: {
+        id: string;
+        name: string;
+        color: string;
+        spent: number;
+        squadSize: number;
+    }[];
+    insights: {
+        highestSpender: { name: string; color: string; spent: number; squadSize: number };
+        lowestSpender: { name: string; color: string; spent: number; squadSize: number };
+        mostBalancedTeam: { name: string; color: string; balanceScore: number };
+    };
 }
 
 interface TeamStat {
@@ -116,7 +132,7 @@ export default function AuctionStatsPage() {
         );
     }
 
-    const { overview, teamStats, roleStats, priceRanges, mostExpensivePlayers } = stats;
+    const { overview, teamStats, roleStats, priceRanges, mostExpensivePlayers, teamSpendingComparison, insights } = stats;
 
     return (
         <div className="min-h-screen bg-[var(--background)] py-8 px-4">
@@ -157,17 +173,109 @@ export default function AuctionStatsPage() {
                     </div>
 
                     <div className="card p-6">
-                        <div className="font-mono text-[var(--muted)] text-xs uppercase mb-2">Teams</div>
-                        <div className="text-4xl font-bold text-[var(--foreground)] mb-2">{overview.totalTeams}</div>
-                        <div className="text-sm font-mono text-[var(--muted)]">Participating</div>
+                        <div className="font-mono text-[var(--muted)] text-xs uppercase mb-2">Auction Progress</div>
+                        <div className="text-4xl font-bold text-[var(--foreground)] mb-2">{overview.auctionCompletionPercent}%</div>
+                        <div className="text-sm font-mono text-[var(--muted)]">{overview.soldPlayers}/{overview.totalPlayers} Players</div>
                     </div>
 
                     <div className="card p-6">
-                        <div className="font-mono text-[var(--muted)] text-xs uppercase mb-2">Available Players</div>
-                        <div className="text-4xl font-bold text-[var(--foreground)] mb-2">
-                            {overview.availablePlayers}
+                        <div className="font-mono text-[var(--muted)] text-xs uppercase mb-2">Budget Remaining</div>
+                        <div className="text-3xl font-bold text-[var(--accent)] mb-2">
+                            {formatCurrency(overview.totalRemainingBudget)}
                         </div>
-                        <div className="text-sm font-mono text-[var(--muted)]">Yet to auction</div>
+                        <div className="text-sm font-mono text-[var(--muted)]">of {formatCurrency(overview.totalBudgetPool)}</div>
+                    </div>
+                </div>
+
+                {/* Key Insights */}
+                <div className="card p-6 mb-8">
+                    <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6">🎯 KEY INSIGHTS</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="card p-4">
+                            <div className="text-xs font-mono text-[var(--muted)] uppercase mb-2">Highest Spender</div>
+                            <div className="text-2xl font-bold font-mono mb-1" style={{ color: insights.highestSpender.color }}>
+                                {insights.highestSpender.name}
+                            </div>
+                            <div className="text-sm font-mono text-[var(--foreground)]">
+                                {formatCurrency(insights.highestSpender.spent)}
+                            </div>
+                            <div className="text-xs font-mono text-[var(--muted)] mt-1">
+                                {insights.highestSpender.squadSize} players
+                            </div>
+                        </div>
+                        
+                        <div className="card p-4">
+                            <div className="text-xs font-mono text-[var(--muted)] uppercase mb-2">Most Balanced Squad</div>
+                            <div className="text-2xl font-bold font-mono mb-1" style={{ color: insights.mostBalancedTeam.color }}>
+                                {insights.mostBalancedTeam.name}
+                            </div>
+                            <div className="text-sm font-mono text-[var(--accent)]">
+                                Balance Score: {insights.mostBalancedTeam.balanceScore.toFixed(1)}
+                            </div>
+                            <div className="text-xs font-mono text-[var(--muted)] mt-1">
+                                Well-distributed roles
+                            </div>
+                        </div>
+                        
+                        <div className="card p-4">
+                            <div className="text-xs font-mono text-[var(--muted)] uppercase mb-2">Budget Saver</div>
+                            <div className="text-2xl font-bold font-mono mb-1" style={{ color: insights.lowestSpender.color }}>
+                                {insights.lowestSpender.name}
+                            </div>
+                            <div className="text-sm font-mono text-[var(--foreground)]">
+                                {formatCurrency(insights.lowestSpender.spent)}
+                            </div>
+                            <div className="text-xs font-mono text-[var(--muted)] mt-1">
+                                {insights.lowestSpender.squadSize} players
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Team Spending Comparison Chart */}
+                <div className="card p-6 mb-8">
+                    <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6">💰 TEAM SPENDING COMPARISON</h2>
+                    <div className="space-y-4">
+                        {teamSpendingComparison.map((team, index) => {
+                            const maxSpent = teamSpendingComparison[0].spent;
+                            const widthPercent = maxSpent > 0 ? (team.spent / maxSpent) * 100 : 0;
+                            return (
+                                <div key={team.id} className="space-y-2">
+                                    <div className="flex justify-between items-center text-sm font-mono">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[var(--muted)]">#{index + 1}</span>
+                                            <span className="font-bold" style={{ color: team.color }}>{team.name}</span>
+                                            <span className="text-[var(--muted)] text-xs">({team.squadSize} players)</span>
+                                        </div>
+                                        <span className="text-[var(--foreground)] font-bold">{formatCurrency(team.spent)}</span>
+                                    </div>
+                                    <div className="w-full border-3 border-[var(--border)] h-8 relative">
+                                        <div
+                                            className="h-full transition-all duration-500"
+                                            style={{ 
+                                                width: `${widthPercent}%`,
+                                                backgroundColor: team.color
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Average Price by Role */}
+                <div className="card p-6 mb-8">
+                    <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6">💵 AVERAGE PRICE BY ROLE</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {Object.entries(overview.avgPriceByRole).map(([role, avgPrice]) => (
+                            <div key={role} className="card p-4 text-center">
+                                <div className="text-xs font-mono text-[var(--muted)] uppercase mb-2">{role}</div>
+                                <div className="text-2xl font-bold font-mono text-[var(--accent)]">
+                                    {formatCurrency(avgPrice)}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -201,7 +309,7 @@ export default function AuctionStatsPage() {
                 {/* Role Distribution */}
                 <div className="card p-6 mb-8">
                     <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6">🎭 ROLE DISTRIBUTION</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         {Object.entries(roleStats).map(([role, data]) => (
                             <div key={role} className="card p-4">
                                 <div className="text-lg font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-2 uppercase">{role}</div>
@@ -221,6 +329,29 @@ export default function AuctionStatsPage() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                    
+                    {/* Visual Role Distribution Chart */}
+                    <div className="space-y-4">
+                        <div className="text-sm font-mono text-[var(--muted)] uppercase mb-2">Sold Players Distribution</div>
+                        {Object.entries(roleStats).map(([role, data]) => {
+                            const totalSold = Object.values(roleStats).reduce((sum, r) => sum + r.sold, 0);
+                            const widthPercent = totalSold > 0 ? (data.sold / totalSold) * 100 : 0;
+                            return (
+                                <div key={role} className="space-y-1">
+                                    <div className="flex justify-between items-center text-sm font-mono">
+                                        <span className="text-[var(--foreground)] uppercase">{role}</span>
+                                        <span className="text-[var(--accent)] font-bold">{data.sold} ({widthPercent.toFixed(1)}%)</span>
+                                    </div>
+                                    <div className="w-full border-3 border-[var(--border)] h-6 relative">
+                                        <div
+                                            className="h-full bg-[var(--accent)] transition-all duration-500"
+                                            style={{ width: `${widthPercent}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
