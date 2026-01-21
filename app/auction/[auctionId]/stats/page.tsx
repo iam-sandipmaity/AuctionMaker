@@ -113,8 +113,18 @@ export default function AuctionStatsPage() {
         try {
             const response = await fetch(`/api/players?auctionId=${auctionId}`);
             const result = await response.json();
-            if (result.success) {
-                setAllPlayers(result.players || []);
+            if (result.success && result.data) {
+                // Map the API response to our Player interface
+                const mappedPlayers = result.data.map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    role: p.role || 'Unknown',
+                    soldPrice: p.soldPrice ? Number(p.soldPrice) : null,
+                    teamId: p.teamId,
+                    teamName: p.team?.name,
+                    teamColor: p.team?.color
+                }));
+                setAllPlayers(mappedPlayers);
             }
         } catch (error) {
             console.error('Error fetching players:', error);
