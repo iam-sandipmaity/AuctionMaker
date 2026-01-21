@@ -297,6 +297,14 @@ app.prepare().then(() => {
     const httpServer = createServer(async (req, res) => {
         try {
             const parsedUrl = parse(req.url, true);
+            
+            // Health check endpoint for Railway
+            if (parsedUrl.pathname === '/health' || parsedUrl.pathname === '/api/health') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+                return;
+            }
+            
             await handle(req, res, parsedUrl);
         } catch (err) {
             rootLogger.error('Error occurred handling', req.url, err);
@@ -397,9 +405,9 @@ app.prepare().then(() => {
             rootLogger.error('Server error:', err);
             process.exit(1);
         })
-        .listen(port, () => {
-            rootLogger.info(`> Ready on http://${hostname}:${port}`);
-            rootLogger.info(`> Socket.IO server running on ws://${hostname}:${port}/api/socketio`);
+        .listen(port, '0.0.0.0', () => {
+            rootLogger.info(`> Ready on http://0.0.0.0:${port}`);
+            rootLogger.info(`> Socket.IO server running on ws://0.0.0.0:${port}/api/socketio`);
             rootLogger.info(`> Environment: ${process.env.NODE_ENV || 'development'}`);
             rootLogger.info(`> Log Level: ${process.env.LOG_LEVEL || 'info'}`);
         });
