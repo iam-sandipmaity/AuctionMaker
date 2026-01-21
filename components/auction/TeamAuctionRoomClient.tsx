@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { useSocket } from '@/lib/socket/client';
-import Timer from '@/components/ui/Timer';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -59,7 +57,6 @@ interface TeamAuctionRoomClientProps {
 
 export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoomClientProps) {
     const { data: session } = useSession();
-    const router = useRouter();
     const { socket, isConnected } = useSocket(initialAuction.id);
     const [auction, setAuction] = useState(initialAuction);
     const [teams, setTeams] = useState<Team[]>([]);
@@ -82,9 +79,28 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             amount: Number(bid.amount),
         }));
 
+    // Track auction view
+    useEffect(() => {
+        const trackView = async () => {
+            if (session?.user) {
+                try {
+                    await fetch('/api/auction-view', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ auctionId: auction.id }),
+                    });
+                } catch (error) {
+                    console.error('Failed to track view:', error);
+                }
+            }
+        };
+        trackView();
+    }, [auction.id, session?.user]);
+
     useEffect(() => {
         fetchTeams();
         fetchPlayers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [auction.id]);
 
     // Show reconnecting notification
@@ -147,7 +163,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         });
 
         // Listen for player sold
-        socket.on('player:sold', async (data: { playerId: string; teamId: string; amount: number; team: any }) => {
+        socket.on('player:sold', (data: { playerId: string; teamId: string; amount: number; team: any }) => {
             console.log('✅ Player sold:', data.playerId, 'to', data.team?.shortName, 'for', data.amount);
             
             // Update player status
@@ -159,15 +175,20 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 )
             );
 
-            // Refresh teams to get updated squad sizes and budgets
-            const teamsRes = await fetch(`/api/teams?auctionId=${auction.id}`);
-            const teamsData = await teamsRes.json();
-            if (teamsData.success) {
-                setTeams(teamsData.data);
-                const myTeam = teamsData.data.find((t: Team) => 
-                    t.users?.some(u => u.id === session?.user?.id)
+            // Update team budget and squad size directly from socket data (no API call needed)
+            if (data.team && data.team.budget !== undefined && data.team.squadSize !== undefined) {
+                setTeams(prevTeams =>
+                    prevTeams.map(t =>
+                        t.id === data.teamId
+                            ? { ...t, budget: data.team.budget, squadSize: data.team.squadSize }
+                            : t
+                    )
                 );
-                if (myTeam) setUserTeam(myTeam);
+                
+                // Update user team if it's the winning team
+                if (userTeam?.id === data.teamId) {
+                    setUserTeam(prev => prev ? { ...prev, budget: data.team.budget, squadSize: data.team.squadSize } : null);
+                }
             }
         });
 
@@ -225,26 +246,6 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         }
     };
 
-    const refreshData = async () => {
-        setLoading(true);
-        try {
-            const [teamsRes, playersRes] = await Promise.all([
-                fetch(`/api/teams?auctionId=${auction.id}`),
-                fetch(`/api/players?auctionId=${auction.id}`)
-            ]);
-            
-            const teamsData = await teamsRes.json();
-            const playersData = await playersRes.json();
-            
-            if (teamsData.success) setTeams(teamsData.data);
-            if (playersData.success) setPlayers(playersData.data);
-        } catch (error) {
-            console.error('Failed to refresh data:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleJoinTeam = async () => {
         if (!selectedTeamId) return;
 
@@ -269,7 +270,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             const team = teams.find(t => t.id === selectedTeamId);
             setUserTeam(team || null);
             fetchTeams();
-        } catch (error) {
+        } catch {
             alert('An error occurred. Please try again.');
         } finally {
             setLoading(false);
@@ -321,8 +322,19 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             const data = await response.json();
 
             if (response.ok) {
-                // Refresh player data
-                await fetchPlayers();
+                // Update player interests in local state
+                setPlayers(prevPlayers =>
+                    prevPlayers.map(p =>
+                        p.id === playerId
+                            ? {
+                                ...p,
+                                interestedTeams: currentlyInterested
+                                    ? p.interestedTeams?.filter(it => it.team.id !== userTeam.id)
+                                    : [...(p.interestedTeams || []), { team: { id: userTeam.id, shortName: userTeam.shortName, color: userTeam.color } }]
+                              }
+                            : p
+                    )
+                );
             } else {
                 alert(data.error || 'Failed to update shortlist');
             }
@@ -335,15 +347,17 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     const handlePlaceBid = async () => {
         if (!currentPlayer || !userTeam) return;
 
-        const amount = parseFloat(bidAmount);
+        const amount = Math.round(parseFloat(bidAmount) * 100) / 100;
         if (isNaN(amount) || amount <= 0) {
             setBidError('Invalid bid amount');
             return;
         }
 
         const highestBid = currentPlayerBids[0];
-        const currentHighest = highestBid ? Number(highestBid.amount) : Number(currentPlayer.basePrice);
-        const minBid = currentHighest + Number(auction.minIncrement);
+        const currentHighest = Math.round((highestBid ? Number(highestBid.amount) : Number(currentPlayer.basePrice)) * 100) / 100;
+        const increment = Math.round(Number(auction.minIncrement) * 100) / 100;
+        // First bid can be at base price, subsequent bids need increment
+        const minBid = highestBid ? currentHighest + increment : currentHighest;
 
         if (amount < minBid) {
             setBidError(`Minimum bid is ${minBid.toFixed(2)} ${auction.currency}`);
@@ -379,9 +393,8 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             }
 
             setBidAmount('');
-            refreshData();
-            router.refresh();
-        } catch (error) {
+            // Data updates via socket events (bid:placed), no need to refresh
+        } catch {
             setBidError('An error occurred. Please try again.');
         } finally {
             setLoading(false);
@@ -398,35 +411,37 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     if (isAdmin && auction.status === 'UPCOMING') {
         return (
             <div className="container section">
-                <div className="mb-8">
+                <div className="mb-6 md:mb-8 px-4 md:px-0">
                     <h1 className="mb-2">{auction.title}</h1>
-                    <p className="text-xl font-mono text-muted mb-4">{auction.description}</p>
+                    <p className="text-base md:text-xl font-mono text-muted mb-4">{auction.description}</p>
                     <Badge status={statusMap[auction.status]}>{auction.status}</Badge>
                 </div>
 
-                <div className="mb-6 flex gap-4">
+                <div className="mb-6 flex gap-2 md:gap-4 px-4 md:px-0 flex-wrap">
                     <Button
                         variant={tab === 'teams' ? 'primary' : 'secondary'}
                         onClick={() => setTab('teams')}
+                        className="text-sm md:text-base px-4 md:px-6 py-2"
                     >
                         TEAMS ({teams.length})
                     </Button>
                     <Button
                         variant={tab === 'players' ? 'primary' : 'secondary'}
                         onClick={() => setTab('players')}
+                        className="text-sm md:text-base px-4 md:px-6 py-2"
                     >
                         PLAYERS ({players.length})
                     </Button>
                 </div>
 
                 {teams.length > 0 && players.length > 0 && (
-                    <Card className="p-6 mb-6 bg-accent/10 border-accent">
-                        <div className="flex items-center justify-between">
+                    <Card className="p-4 md:p-6 mb-6 bg-accent/10 border-accent mx-4 md:mx-0">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                             <div>
-                                <h3 className="font-mono text-lg font-bold text-accent mb-2">
+                                <h3 className="font-mono text-base md:text-lg font-bold text-accent mb-2">
                                     Ready to Start Auction
                                 </h3>
-                                <p className="font-mono text-sm text-muted">
+                                <p className="font-mono text-xs md:text-sm text-muted">
                                     {teams.length} teams and {players.length} players configured
                                 </p>
                             </div>
@@ -434,7 +449,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                                 variant="primary"
                                 onClick={handleStartAuction}
                                 disabled={loading}
-                                className="text-xl px-8 py-4"
+                                className="text-lg md:text-xl px-6 md:px-8 py-3 md:py-4 w-full md:w-auto"
                             >
                                 {loading ? 'STARTING...' : '🎯 START AUCTION'}
                             </Button>
@@ -443,6 +458,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 )}
 
                 {tab === 'teams' && (
+                    <div className="px-4 md:px-0">
                     <AdminTeamManager
                         auctionId={auction.id}
                         teams={teams}
@@ -450,15 +466,18 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                         teamBudget={auction.teamBudget || 100}
                         currency={auction.currency}
                     />
+                    </div>
                 )}
 
                 {tab === 'players' && (
+                    <div className="px-4 md:px-0">
                     <AdminPlayerManager
                         auctionId={auction.id}
                         players={players}
                         onPlayerAdded={fetchPlayers}
                         currency={auction.currency}
                     />
+                    </div>
                 )}
             </div>
         );
@@ -468,13 +487,13 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     if (!isAdmin && !userTeam && auction.status === 'UPCOMING') {
         return (
             <div className="container section">
-                <div className="max-w-2xl mx-auto">
+                <div className="max-w-2xl mx-auto px-4 md:px-0">
                     <h1 className="mb-4 text-center">{auction.title}</h1>
-                    <p className="text-xl font-mono text-muted mb-8 text-center">
+                    <p className="text-base md:text-xl font-mono text-muted mb-8 text-center">
                         {auction.description}
                     </p>
 
-                    <Card className="p-8">
+                    <Card className="p-6 md:p-8">
                         <h2 className="mb-6 text-center">SELECT YOUR TEAM</h2>
                         
                         {teams.length === 0 ? (
@@ -542,16 +561,17 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         <div className="container section">
             {/* Reconnecting notification */}
             {showReconnecting && (
-                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 bg-yellow-500 text-black font-mono text-sm font-bold rounded shadow-lg animate-pulse">
+                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 px-4 md:px-5 lg:px-6 py-2 md:py-2.5 lg:py-3 bg-yellow-500 text-black font-mono text-xs md:text-sm font-bold rounded shadow-lg animate-pulse">
                     🔄 Reconnecting to live updates...
                 </div>
             )}
 
-            <div className="mb-8">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <h1 className="mb-2">{auction.title}</h1>
-                        <p className="text-xl font-mono text-muted">{auction.description}</p>
+            {/* Header */}
+            <div className="mb-6 md:mb-7 lg:mb-8 px-4 lg:px-0">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-3">
+                    <div className="flex-1">
+                        <h1 className="mb-2 text-2xl md:text-3xl lg:text-4xl">{auction.title}</h1>
+                        <p className="text-base md:text-lg lg:text-xl font-mono text-muted">{auction.description}</p>
                     </div>
                     <div className="flex items-center gap-3">
                         {auction.status === 'LIVE' && (
@@ -567,38 +587,41 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 </div>
                 
                 {userTeam && (
-                    <div className="flex items-center gap-4">
-                        <p className="font-mono">
-                            Your Team: <span style={{ color: userTeam.color }} className="font-bold text-xl">{userTeam.shortName}</span>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-3 lg:gap-4 flex-wrap mb-4">
+                        <p className="font-mono text-sm md:text-base">
+                            Your Team: <span style={{ color: userTeam.color }} className="font-bold text-lg md:text-xl">{userTeam.shortName}</span>
                         </p>
-                        <p className="font-mono">
-                            Budget: <span className="font-bold text-xl text-accent">
+                        <p className="font-mono text-sm md:text-base">
+                            Budget: <span className="font-bold text-lg md:text-xl text-accent">
                                 {Number(userTeam.budget).toFixed(2)} {auction.currency}
                             </span>
                         </p>
-                        <p className="font-mono">
+                        <p className="font-mono text-sm md:text-base">
                             Squad: <span className="font-bold">{userTeam.squadSize} players</span>
                         </p>
                     </div>
                 )}
 
                 {/* Navigation Tabs */}
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-2 mt-4 flex-wrap">
                     <Button
                         variant={tab === 'auction' ? 'primary' : 'secondary'}
                         onClick={() => setTab('auction')}
+                        className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2"
                     >
                         🎯 LIVE AUCTION
                     </Button>
                     <Button
                         variant={tab === 'players' ? 'primary' : 'secondary'}
                         onClick={() => setTab('players')}
+                        className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2"
                     >
                         👥 PLAYER POOL
                     </Button>
                     <Button
                         variant={tab === 'teams' ? 'primary' : 'secondary'}
                         onClick={() => setTab('teams')}
+                        className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2"
                     >
                         🏆 TEAMS
                     </Button>
@@ -606,9 +629,9 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             </div>
 
             {tab === 'auction' && (
-            <div className="grid lg:grid-cols-3 gap-8">
+            <div className="grid lg:grid-cols-3 gap-5 md:gap-6 lg:gap-8 px-4 lg:px-0">
                 {/* Main Content */}
-                <div className="lg:col-span-2 space-y-6 order-1">
+                <div className="lg:col-span-2 space-y-4 md:space-y-5 lg:space-y-6 order-1">
                     {isAdmin ? (
                         <AuctioneerControlPanel
                             auctionId={auction.id}
@@ -616,15 +639,14 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                             players={players}
                             currentBids={currentPlayerBids}
                             currency={auction.currency}
-                            onRefresh={refreshData}
                         />
                     ) : (
                         <>
                             {currentPlayer ? (
-                                <Card className="p-8">
+                                <Card className="p-5 md:p-6 lg:p-8">
                                     <div className="text-center mb-6">
-                                        <p className="font-mono text-sm text-muted mb-2">CURRENT PLAYER</p>
-                                        <h2 className="text-4xl mb-2">{currentPlayer.name}</h2>
+                                        <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENT PLAYER</p>
+                                        <h2 className="text-2xl md:text-3xl lg:text-4xl mb-2">{currentPlayer.name}</h2>
                                         {currentPlayer.role && (
                                             <Badge status="active">{currentPlayer.role}</Badge>
                                         )}
@@ -634,9 +656,9 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                                     </div>
 
                                     {currentPlayerBids.length > 0 ? (
-                                        <div className="text-center p-6 border-3 border-accent bg-accent/10">
-                                            <p className="font-mono text-sm text-muted mb-2">HIGHEST BID</p>
-                                            <p className="font-mono text-6xl font-bold text-accent mb-2">
+                                        <div className="text-center p-4 md:p-5 lg:p-6 border-3 border-accent bg-accent/10">
+                                            <p className="font-mono text-xs md:text-sm text-muted mb-2">HIGHEST BID</p>
+                                            <p className="font-mono text-4xl md:text-5xl lg:text-6xl font-bold text-accent mb-2">
                                                 {Number(currentPlayerBids[0].amount).toFixed(2)} {auction.currency}
                                             </p>
                                             <p 
@@ -647,9 +669,9 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                                             </p>
                                         </div>
                                     ) : (
-                                        <div className="text-center p-6 border-3 border-border">
-                                            <p className="font-mono text-sm text-muted mb-2">BASE PRICE</p>
-                                            <p className="font-mono text-6xl font-bold">
+                                        <div className="text-center p-4 md:p-5 lg:p-6 border-3 border-border">
+                                            <p className="font-mono text-xs md:text-sm text-muted mb-2">BASE PRICE</p>
+                                            <p className="font-mono text-4xl md:text-5xl lg:text-6xl font-bold">
                                                 {Number(currentPlayer.basePrice).toFixed(2)} {auction.currency}
                                             </p>
                                             <p className="font-mono text-sm text-muted mt-2">No bids yet</p>
@@ -657,8 +679,8 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                                     )}
                                 </Card>
                             ) : (
-                                <Card className="p-12 text-center">
-                                    <p className="font-mono text-xl text-muted">
+                                <Card className="p-6 md:p-8 lg:p-12 text-center">
+                                    <p className="font-mono text-base md:text-lg lg:text-xl text-muted">
                                         Waiting for auctioneer to start next player...
                                     </p>
                                 </Card>
@@ -668,8 +690,8 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
 
                     {/* Bid Form - Mobile positioned here */}
                     {!isAdmin && currentPlayer && userTeam && (
-                        <Card className="p-6 lg:hidden">
-                            <h3 className="mb-4">PLACE BID</h3>
+                        <Card className="p-4 md:p-5 lg:p-6 lg:hidden">
+                            <h3 className="mb-4 text-xl md:text-2xl">PLACE BID</h3>
                             
                             {bidError && (
                                 <div className="mb-4 p-3 border-3 border-red-500 bg-red-500/10">
@@ -726,8 +748,8 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
 
                     {/* Teams Overview */}
                     <div>
-                        <h3 className="font-mono text-lg font-bold mb-4">TEAMS</h3>
-                        <div className="grid md:grid-cols-2 gap-4">
+                        <h3 className="font-mono text-base md:text-lg font-bold mb-4">TEAMS</h3>
+                        <div className="grid gap-3 md:gap-3 lg:gap-4 sm:grid-cols-2">
                             {teams.map((team) => (
                                 <Card 
                                     key={team.id} 
@@ -759,11 +781,11 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 </div>
 
                 {/* Sidebar */}
-                <div className="space-y-6 order-2 lg:order-3">
+                <div className="space-y-4 md:space-y-5 lg:space-y-6 order-2 lg:order-3">
                     {/* Bid Form */}
                     {!isAdmin && currentPlayer && userTeam && (
-                        <Card className="p-6 hidden lg:block">
-                            <h3 className="mb-4">PLACE BID</h3>
+                        <Card className="p-4 md:p-5 lg:p-6 hidden lg:block">
+                            <h3 className="mb-4 text-xl md:text-2xl">PLACE BID</h3>
                             
                             {bidError && (
                                 <div className="mb-4 p-3 border-3 border-red-500 bg-red-500/10">
@@ -850,6 +872,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
 
             {/* Player Pool Tab */}
             {tab === 'players' && (
+                <div className="px-4 md:px-0">
                 <PlayerPoolView
                     players={players}
                     currency={auction.currency}
@@ -857,13 +880,14 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                     isAdmin={isAdmin}
                     onToggleInterest={userTeam ? handleToggleInterest : undefined}
                 />
+                </div>
             )}
 
             {/* Teams Tab */}
             {tab === 'teams' && (
-                <div>
-                    <h3 className="font-mono text-lg font-bold mb-4">TEAMS</h3>
-                    <div className="grid md:grid-cols-2 gap-4">
+                <div className="px-4 md:px-0">
+                    <h3 className="font-mono text-base md:text-lg font-bold mb-4">TEAMS</h3>
+                    <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
                         {teams.map((team) => (
                             <Card 
                                 key={team.id} 
