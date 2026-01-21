@@ -311,6 +311,12 @@ app.prepare().then(() => {
         cors: {
             origin: '*',
             methods: ['GET', 'POST'],
+            credentials: true,
+        },
+        // Allow connections through proxies
+        allowRequest: (req, callback) => {
+            // Allow all origins in production when behind a proxy
+            callback(null, true);
         },
         // Increase connection limits
         maxHttpBufferSize: 1e8, // 100MB
@@ -319,12 +325,24 @@ app.prepare().then(() => {
         upgradeTimeout: 30000, // 30 seconds
         // Allow unlimited connections
         connectTimeout: 45000,
-        // Transports order
+        // Transports order - prefer websocket
         transports: ['websocket', 'polling'],
         // Allow more connections per origin
         allowEIO3: true,
-        // Increase concurrent connections
-        perMessageDeflate: false, // Disable compression for better performance
+        // Disable compression for better performance
+        perMessageDeflate: false,
+        // Support for reverse proxies
+        cookie: false,
+        // Handle upgrade properly
+        handlePreflightRequest: (req, res) => {
+            res.writeHead(200, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+                'Access-Control-Allow-Headers': '*',
+                'Access-Control-Allow-Credentials': 'true',
+            });
+            res.end();
+        },
     });
 
     // Initialize socket connection manager
