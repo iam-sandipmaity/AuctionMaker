@@ -39,6 +39,19 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: true, tracked: false });
         }
 
+        // Verify user exists before tracking (prevent FK constraint violation)
+        const userExists = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { id: true },
+        });
+
+        if (!userExists) {
+            return NextResponse.json(
+                { success: false, error: 'User not found' },
+                { status: 404 }
+            );
+        }
+
         // Create or update auction view
         await prisma.auctionView.upsert({
             where: {
