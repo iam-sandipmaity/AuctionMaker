@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -27,6 +28,7 @@ model User {
   bids          Bid[]
   wonAuctions   Auction[] @relation("WinnerRelation")
   createdAuctions Auction[] @relation("CreatorRelation")
+  auctionViews  AuctionView[]
 
   @@map("users")
 }
@@ -64,6 +66,7 @@ model Auction {
   bids    Bid[]
   teams   Team[]
   players Player[]
+  views   AuctionView[]
 
   @@map("auctions")
 }
@@ -153,6 +156,19 @@ model PlayerInterest {
 
   @@unique([playerId, teamId])
   @@map("player_interests")
+}
+
+model AuctionView {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auctionId    String
+  auction      Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  lastViewedAt DateTime @default(now()) @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, auctionId])
+  @@map("auction_views")
 }
 
 enum AuctionStatus {
