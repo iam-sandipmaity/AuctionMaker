@@ -205,7 +205,19 @@ input:focus, textarea:focus {
   padding: 4rem 0;
 }
 
-@media (max-width: 768px) {
+/* Tablet adjustments (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+  
+  .section {
+    padding: 3rem 0;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
   .container {
     padding: 0 1rem;
   }
