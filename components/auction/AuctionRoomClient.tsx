@@ -16,7 +16,25 @@ interface AuctionRoomClientProps {
 export default function AuctionRoomClient({ initialAuction }: AuctionRoomClientProps) {
     const { data: session } = useSession();
     const router = useRouter();
-    const [auction, setAuction] = useState(initialAuction);
+    const [auction] = useState(initialAuction);
+
+    // Track auction view
+    useEffect(() => {
+        const trackView = async () => {
+            if (session?.user) {
+                try {
+                    await fetch('/api/auction-view', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ auctionId: auction.id }),
+                    });
+                } catch (error) {
+                    console.error('Failed to track view:', error);
+                }
+            }
+        };
+        trackView();
+    }, [auction.id, session?.user]);
 
     const currentPrice = typeof auction.currentPrice === 'object'
         ? parseFloat(auction.currentPrice.toString())
@@ -52,11 +70,11 @@ export default function AuctionRoomClient({ initialAuction }: AuctionRoomClientP
     return (
         <div className="container section">
             {/* Header */}
-            <div className="mb-12">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
+            <div className="mb-8 md:mb-12 px-4 md:px-0">
+                <div className="flex flex-col md:flex-row items-start justify-between mb-4 gap-4">
+                    <div className="flex-1">
                         <h1 className="mb-2">{auction.title}</h1>
-                        <p className="text-xl font-mono text-muted">{auction.description}</p>
+                        <p className="text-base md:text-xl font-mono text-muted">{auction.description}</p>
                     </div>
                     <Badge status={statusMap[auction.status]}>
                         {auction.status}
@@ -64,14 +82,14 @@ export default function AuctionRoomClient({ initialAuction }: AuctionRoomClientP
                 </div>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-8">
+            <div className="grid lg:grid-cols-3 gap-6 md:gap-8 px-4 md:px-0">
                 {/* Main Content */}
-                <div className="lg:col-span-2 space-y-8">
+                <div className="lg:col-span-2 space-y-6 md:space-y-8">
                     {/* Current Bid Display */}
-                    <div className="card p-8">
+                    <div className="card p-6 md:p-8">
                         <div className="text-center">
-                            <p className="font-mono text-sm text-muted mb-2">CURRENT HIGHEST BID</p>
-                            <div className="font-mono text-6xl md:text-8xl font-bold text-accent mb-4 pulse-glow">
+                            <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENT HIGHEST BID</p>
+                            <div className="font-mono text-4xl md:text-6xl lg:text-8xl font-bold text-accent mb-4 pulse-glow">
                                 ${currentPrice.toFixed(2)}
                             </div>
                             {highestBid && (
@@ -100,7 +118,7 @@ export default function AuctionRoomClient({ initialAuction }: AuctionRoomClientP
 
                     {/* User Status */}
                     {session && auction.status === 'LIVE' && (
-                        <div className="card p-6">
+                        <div className="card p-4 md:p-6">
                             <div className="flex items-center justify-between">
                                 <span className="font-mono text-sm text-muted">YOUR STATUS</span>
                                 {isWinning && <Badge status="winning">WINNING</Badge>}
@@ -123,7 +141,7 @@ export default function AuctionRoomClient({ initialAuction }: AuctionRoomClientP
                 </div>
 
                 {/* Sidebar */}
-                <div className="space-y-8">
+                <div className="space-y-6 md:space-y-8">
                     {/* Bid Form */}
                     {auction.status === 'LIVE' && (
                         <BidForm
@@ -136,9 +154,9 @@ export default function AuctionRoomClient({ initialAuction }: AuctionRoomClientP
                     )}
 
                     {/* Auction Details */}
-                    <div className="card p-6">
-                        <h3 className="mb-6">DETAILS</h3>
-                        <div className="space-y-4">
+                    <div className="card p-4 md:p-6">
+                        <h3 className="mb-4 md:mb-6 text-xl md:text-2xl">DETAILS</h3>
+                        <div className="space-y-3 md:space-y-4">
                             <div className="flex justify-between">
                                 <span className="font-mono text-sm text-muted">STARTING PRICE</span>
                                 <span className="font-mono text-sm font-bold">

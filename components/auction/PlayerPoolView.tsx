@@ -301,7 +301,7 @@ export default function PlayerPoolView({
                                     <div>
                                         <p className="font-mono text-xs text-muted">Base Price</p>
                                         <p className="font-mono font-bold text-accent">
-                                            {Number(player.basePrice).toFixed(0)} {currency}
+                                            {Number(player.basePrice).toFixed(2)} {currency}
                                         </p>
                                     </div>
                                     {player.team && (
@@ -314,7 +314,7 @@ export default function PlayerPoolView({
                                                 {player.team.shortName}
                                             </p>
                                             <p className="font-mono text-xs text-accent">
-                                                {Number(player.soldPrice).toFixed(0)} {currency}
+                                                {Number(player.soldPrice).toFixed(2)} {currency}
                                             </p>
                                         </div>
                                     )}
@@ -388,7 +388,7 @@ export default function PlayerPoolView({
                                             {selectedPlayerForBids.team.name}
                                         </p>
                                         <p className="font-mono font-bold text-xl text-accent">
-                                            {Number(selectedPlayerForBids.soldPrice).toFixed(0)} {currency}
+                                            {Number(selectedPlayerForBids.soldPrice).toFixed(2)} {currency}
                                         </p>
                                     </div>
                                 </div>
@@ -439,7 +439,7 @@ export default function PlayerPoolView({
                                                         </div>
                                                     </div>
                                                     <p className="font-mono font-bold text-lg text-accent">
-                                                        {Number(bid.amount).toFixed(0)} {currency}
+                                                        {Number(bid.amount).toFixed(2)} {currency}
                                                     </p>
                                                 </div>
                                                 <p className="font-mono text-xs text-muted">

@@ -17,7 +17,6 @@ export default function BidForm({
     auctionId,
     currentPrice,
     minIncrement,
-    currency,
     onBidPlaced,
 }: BidFormProps) {
     const { data: session } = useSession();
@@ -68,7 +67,7 @@ export default function BidForm({
             if (onBidPlaced) onBidPlaced();
 
             setTimeout(() => setSuccess(false), 3000);
-        } catch (err) {
+        } catch {
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);
