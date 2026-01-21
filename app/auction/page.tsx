@@ -13,21 +13,21 @@ export default async function AuctionPage() {
 
     return (
         <div className="container section">
-            <div className="mb-12">
+            <div className="mb-8 md:mb-10 lg:mb-12 px-4 lg:px-0">
                 <h1 className="mb-4">AUCTION HUB</h1>
-                <p className="text-xl font-mono text-muted">
+                <p className="text-base md:text-lg lg:text-xl font-mono text-muted">
                     Browse and join live auctions. Place bids. Win items.
                 </p>
             </div>
 
             {/* Live Auctions */}
             {liveAuctions.length > 0 && (
-                <section className="mb-16">
-                    <div className="flex items-center gap-4 mb-8">
+                <section className="mb-10 md:mb-12 lg:mb-16 px-4 lg:px-0">
+                    <div className="flex items-center gap-4 mb-6 md:mb-7 lg:mb-8">
                         <h2>LIVE AUCTIONS</h2>
                         <div className="h-3 w-3 bg-accent rounded-full animate-pulse"></div>
                     </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-5 lg:gap-6">
                         {liveAuctions.map((auction) => (
                             <AuctionCard key={auction.id} auction={auction} />
                         ))}
@@ -37,9 +37,9 @@ export default async function AuctionPage() {
 
             {/* Upcoming Auctions */}
             {upcomingAuctions.length > 0 && (
-                <section className="mb-16 border-t-3 border-border pt-16">
-                    <h2 className="mb-8">UPCOMING AUCTIONS</h2>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <section className="mb-10 md:mb-12 lg:mb-16 border-t-3 border-border pt-10 md:pt-12 lg:pt-16 px-4 lg:px-0">
+                    <h2 className="mb-6 md:mb-7 lg:mb-8">UPCOMING AUCTIONS</h2>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-5 lg:gap-6">
                         {upcomingAuctions.map((auction) => (
                             <AuctionCard key={auction.id} auction={auction} />
                         ))}
@@ -49,9 +49,9 @@ export default async function AuctionPage() {
 
             {/* Ended Auctions */}
             {endedAuctions.length > 0 && (
-                <section className="mb-16 border-t-3 border-border pt-16">
-                    <h2 className="mb-8">COMPLETED AUCTIONS</h2>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <section className="mb-10 md:mb-12 lg:mb-16 border-t-3 border-border pt-10 md:pt-12 lg:pt-16 px-4 lg:px-0">
+                    <h2 className="mb-6 md:mb-7 lg:mb-8">COMPLETED AUCTIONS</h2>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-5 lg:gap-6">
                         {endedAuctions.map((auction) => (
                             <AuctionCard key={auction.id} auction={auction} />
                         ))}
@@ -60,8 +60,8 @@ export default async function AuctionPage() {
             )}
 
             {auctions.length === 0 && (
-                <div className="text-center py-20">
-                    <p className="text-2xl font-mono text-muted">
+                <div className="text-center py-12 md:py-16 lg:py-20 px-4">
+                    <p className="text-lg md:text-xl lg:text-2xl font-mono text-muted">
                         No auctions available yet. Check back soon!
                     </p>
                 </div>
