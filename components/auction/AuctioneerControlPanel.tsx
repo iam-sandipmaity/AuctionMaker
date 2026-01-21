@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
@@ -54,7 +54,6 @@ interface AuctioneerControlPanelProps {
     players: Player[];
     currentBids: Bid[];
     currency: string;
-    onRefresh: () => void;
 }
 
 export default function AuctioneerControlPanel({
@@ -63,7 +62,6 @@ export default function AuctioneerControlPanel({
     players,
     currentBids,
     currency,
-    onRefresh,
 }: AuctioneerControlPanelProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -110,8 +108,8 @@ export default function AuctioneerControlPanel({
                 return;
             }
 
-            onRefresh();
-        } catch (err) {
+            // Data updates via socket event (player:auction:start), no need to refresh
+        } catch {
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);
@@ -148,8 +146,8 @@ export default function AuctioneerControlPanel({
                 return;
             }
 
-            onRefresh();
-        } catch (err) {
+            // Data updates via socket event (player:sold), no need to refresh
+        } catch {
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);
@@ -185,8 +183,8 @@ export default function AuctioneerControlPanel({
                 return;
             }
 
-            onRefresh();
-        } catch (err) {
+            // Data updates via socket event (player:unsold), no need to refresh
+        } catch {
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);
@@ -194,9 +192,9 @@ export default function AuctioneerControlPanel({
     };
 
     return (
-        <div className="space-y-6">
-            <Card className="p-6 bg-accent/10 border-accent">
-                <h3 className="font-mono text-xl font-bold text-accent mb-4">🎤 AUCTIONEER CONTROL PANEL</h3>
+        <div className="space-y-5 md:space-y-5 lg:space-y-6">
+            <Card className="p-5 md:p-6 lg:p-6 bg-accent/10 border-accent">
+                <h3 className="font-mono text-lg md:text-xl font-bold text-accent mb-4">🎤 AUCTIONEER CONTROL PANEL</h3>
                 
                 {error && (
                     <div className="mb-4 p-3 border-3 border-red-500 bg-red-500/10">
@@ -206,9 +204,9 @@ export default function AuctioneerControlPanel({
 
                 {currentPlayer ? (
                     <div className="space-y-4">
-                        <div className="p-4 border-3 border-border">
-                            <p className="font-mono text-sm text-muted mb-2">CURRENTLY AUCTIONING</p>
-                            <h4 className="font-mono text-2xl font-bold mb-2">{currentPlayer.name}</h4>
+                        <div className="p-4 md:p-4 lg:p-4 border-3 border-border">
+                            <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENTLY AUCTIONING</p>
+                            <h4 className="font-mono text-xl md:text-2xl font-bold mb-2">{currentPlayer.name}</h4>
                             {currentPlayer.role && (
                                 <Badge status="active">{currentPlayer.role}</Badge>
                             )}
@@ -224,21 +222,21 @@ export default function AuctioneerControlPanel({
                         </div>
 
                         {highestBid ? (
-                            <div className="p-4 border-3 border-accent bg-accent/5">
-                                <p className="font-mono text-sm text-muted mb-2">HIGHEST BID</p>
+                            <div className="p-4 md:p-4 lg:p-4 border-3 border-accent bg-accent/5">
+                                <p className="font-mono text-xs md:text-sm text-muted mb-2">HIGHEST BID</p>
                                 <div className="flex items-center justify-between mb-2">
                                     <div>
                                         <p 
-                                            className="font-mono text-xl font-bold"
+                                            className="font-mono text-lg md:text-xl font-bold"
                                             style={{ color: highestBid.team?.color }}
                                         >
                                             {highestBid.team?.shortName || highestBid.user?.username || 'Unknown'}
                                         </p>
-                                        <p className="font-mono text-sm text-muted">
+                                        <p className="font-mono text-xs md:text-sm text-muted">
                                             @{highestBid.user?.username || 'unknown'}
                                         </p>
                                     </div>
-                                    <p className="font-mono text-3xl font-bold text-accent">
+                                    <p className="font-mono text-2xl md:text-3xl font-bold text-accent">
                                         {highestBid.amount} {currency}
                                     </p>
                                 </div>
@@ -249,12 +247,12 @@ export default function AuctioneerControlPanel({
                             </div>
                         )}
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-2 md:gap-3">
                             <Button
                                 variant="primary"
                                 onClick={handleSellPlayer}
                                 disabled={loading || !highestBid}
-                                className="flex-1"
+                                className="flex-1 text-sm md:text-base"
                             >
                                 {loading ? 'PROCESSING...' : '✓ SOLD'}
                             </Button>
@@ -262,7 +260,7 @@ export default function AuctioneerControlPanel({
                                 variant="secondary"
                                 onClick={handleUnsoldPlayer}
                                 disabled={loading}
-                                className="flex-1"
+                                className="flex-1 text-sm md:text-base"
                             >
                                 UNSOLD
                             </Button>
@@ -289,8 +287,8 @@ export default function AuctioneerControlPanel({
                         )}
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <p className="font-mono text-muted mb-4">
+                    <div className="text-center py-6 md:py-8">
+                        <p className="font-mono text-sm md:text-base text-muted mb-4">
                             No player is currently being auctioned.
                         </p>
                         <p className="font-mono text-sm text-muted">
@@ -303,7 +301,7 @@ export default function AuctioneerControlPanel({
             {/* Available Players */}
             {playersToAuction.length > 0 && (
                 <div>
-                    <div className="mb-4 p-3 bg-accent/10 border-2 border-accent/20">
+                    <div className="mb-4 p-3 md:p-3 lg:p-3 bg-accent/10 border-2 border-accent/20">
                         <p className="font-mono text-xs text-muted">
                             📋 Showing: All Tier 1-3 players + Tier 4-5 players shortlisted by teams
                         </p>
@@ -312,10 +310,10 @@ export default function AuctioneerControlPanel({
                         </p>
                     </div>
                     
-                    <h4 className="font-mono text-lg font-bold mb-3">
+                    <h4 className="font-mono text-base md:text-lg font-bold mb-3">
                         NEXT PLAYERS ({playersToAuction.length})
                     </h4>
-                    <div className="grid md:grid-cols-2 gap-3">
+                    <div className="grid md:grid-cols-2 gap-3 md:gap-3 lg:gap-3">
                         {playersToAuction.slice(0, 6).map((player) => {
                             const interestedCount = player.interestedTeams?.length || 0;
                             const tierEmoji = ['🌟', '⭐', '✨', '💫', '🔹'][(player.marqueeSet || 5) - 1];
@@ -323,7 +321,7 @@ export default function AuctioneerControlPanel({
                             return (
                                 <Card 
                                     key={player.id} 
-                                    className={`p-4 ${player.isStarPlayer ? 'border-yellow-500 border-4 bg-yellow-500/10' : ''}`}
+                                    className={`p-3 md:p-4 ${player.isStarPlayer ? 'border-yellow-500 border-4 bg-yellow-500/10' : ''}`}
                                 >
                                     <div className="flex items-start justify-between mb-2">
                                         <div className="flex-1">
@@ -356,7 +354,7 @@ export default function AuctioneerControlPanel({
                                             variant="primary"
                                             onClick={() => handleStartPlayer(player.id)}
                                             disabled={loading || !!currentPlayer}
-                                            className="text-sm px-3 py-1"
+                                            className="text-xs md:text-sm px-2 md:px-3 py-1"
                                         >
                                             START
                                         </Button>
