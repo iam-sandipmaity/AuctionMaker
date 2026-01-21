@@ -40,7 +40,6 @@ interface AuctioneerControlProps {
     auctionId: string;
     isCreator: boolean;
     auctionStatus: string;
-    minIncrement: number;
     currency: string;
 }
 
@@ -48,7 +47,6 @@ export default function AuctioneerControl({
     auctionId, 
     isCreator, 
     auctionStatus,
-    minIncrement,
     currency 
 }: AuctioneerControlProps) {
     const [teams, setTeams] = useState<Team[]>([]);
@@ -75,13 +73,6 @@ export default function AuctioneerControl({
 
     const currentPlayer = players.find(p => p.isCurrentlyAuctioning);
 
-    useEffect(() => {
-        if (isCreator) {
-            fetchTeams();
-            fetchPlayers();
-        }
-    }, [auctionId, isCreator]);
-
     const fetchTeams = async () => {
         try {
             const response = await fetch(`/api/teams?auctionId=${auctionId}`);
@@ -89,8 +80,8 @@ export default function AuctioneerControl({
             if (data.success) {
                 setTeams(data.data);
             }
-        } catch (err) {
-            console.error('Failed to fetch teams:', err);
+        } catch (error) {
+            console.error('Failed to fetch teams:', error);
         }
     };
 
@@ -101,10 +92,18 @@ export default function AuctioneerControl({
             if (data.success) {
                 setPlayers(data.data);
             }
-        } catch (err) {
-            console.error('Failed to fetch players:', err);
+        } catch (error) {
+            console.error('Failed to fetch players:', error);
         }
     };
+
+    useEffect(() => {
+        if (isCreator) {
+            fetchTeams();
+            fetchPlayers();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [auctionId, isCreator]);
 
     const handleAddTeam = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -132,7 +131,7 @@ export default function AuctioneerControl({
             } else {
                 setError(data.error || 'Failed to add team');
             }
-        } catch (err) {
+        } catch {
             setError('An error occurred');
         } finally {
             setLoading(false);
@@ -165,7 +164,7 @@ export default function AuctioneerControl({
             } else {
                 setError(data.error || 'Failed to add player');
             }
-        } catch (err) {
+        } catch {
             setError('An error occurred');
         } finally {
             setLoading(false);
@@ -195,7 +194,7 @@ export default function AuctioneerControl({
             } else {
                 setError(data.error || 'Failed to start auction');
             }
-        } catch (err) {
+        } catch {
             setError('An error occurred');
         } finally {
             setLoading(false);
@@ -227,7 +226,7 @@ export default function AuctioneerControl({
             } else {
                 setError(data.error || 'Failed to start player auction');
             }
-        } catch (err) {
+        } catch {
             setError('An error occurred');
         } finally {
             setLoading(false);
@@ -264,7 +263,7 @@ export default function AuctioneerControl({
             } else {
                 setError(data.error || 'Failed to end player auction');
             }
-        } catch (err) {
+        } catch {
             setError('An error occurred');
         } finally {
             setLoading(false);

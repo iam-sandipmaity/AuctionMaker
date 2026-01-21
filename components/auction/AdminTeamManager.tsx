@@ -74,7 +74,7 @@ export default function AdminTeamManager({
             });
             setShowForm(false);
             onTeamAdded();
-        } catch (err) {
+        } catch {
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);
@@ -96,7 +96,7 @@ export default function AdminTeamManager({
             }
 
             onTeamAdded();
-        } catch (err) {
+        } catch {
             alert('An error occurred. Please try again.');
         }
     };
@@ -135,7 +135,7 @@ export default function AdminTeamManager({
             setBulkImportFile(null);
             setShowBulkImport(false);
             onTeamAdded();
-        } catch (err) {
+        } catch {
             setError('An error occurred during import. Please try again.');
         } finally {
             setLoading(false);
