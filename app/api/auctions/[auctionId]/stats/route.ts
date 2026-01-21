@@ -28,7 +28,7 @@ export async function GET(
             );
         }
 
-        // Get all teams with their players
+        // Get all teams with their sold players
         const teams = await prisma.team.findMany({
             where: { auctionId },
             include: {
@@ -40,9 +40,6 @@ export async function GET(
                         role: true,
                         soldPrice: true,
                     },
-                },
-                _count: {
-                    select: { players: true },
                 },
             },
             orderBy: { name: 'asc' },
@@ -81,7 +78,7 @@ export async function GET(
             const playersNeeded = Math.max(0, minRequired - squadSize);
             const slotsRemaining = maxAllowed - squadSize;
 
-            // Role distribution
+            // Role distribution - count sold players by role for this team
             const roleDistribution = {
                 BATSMAN: team.players.filter(p => p.role === 'BATSMAN').length,
                 BOWLER: team.players.filter(p => p.role === 'BOWLER').length,
@@ -103,7 +100,6 @@ export async function GET(
                 slotsRemaining,
                 minRequired,
                 maxAllowed,
-                players: team.players,
                 roleDistribution,
             };
         });
