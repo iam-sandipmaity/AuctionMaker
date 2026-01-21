@@ -91,7 +91,7 @@ export default function AdminPage() {
             setTimeout(() => {
                 router.push(`/auction/${data.data.id}`);
             }, 1500);
-        } catch (err) {
+        } catch {
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);
