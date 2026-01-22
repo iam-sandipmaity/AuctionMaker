@@ -14,6 +14,7 @@ const createAuctionSchema = z.object({
     duration: z.number().positive(), // in minutes
     maxParticipants: z.number().positive().optional(),
     currency: z.string().default('USD'),
+    budgetDenomination: z.string().optional(),
     imageUrl: z.string().url().optional(),
     // Team auction specific
     teamBudget: z.number().positive().optional(),
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
             endTime: endTime,
             maxParticipants: validatedData.maxParticipants,
             currency: validatedData.currency,
+            budgetDenomination: validatedData.budgetDenomination,
             imageUrl: validatedData.imageUrl,
             createdById: session.user.id,
         };
