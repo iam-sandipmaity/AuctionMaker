@@ -17,6 +17,7 @@ interface Player {
     marqueeSet?: number;
     isStarPlayer?: boolean;
     isCurrentlyAuctioning?: boolean;
+    hasBeenAuctioned?: boolean;
     team?: {
         id: string;
         name: string;
@@ -35,6 +36,7 @@ interface Player {
 interface PlayerPoolViewProps {
     players: Player[];
     currency: string;
+    budgetDenomination?: string;
     userTeamId?: string;
     isAdmin?: boolean;
     onToggleInterest?: (playerId: string, interested: boolean) => Promise<void>;
@@ -66,11 +68,20 @@ interface Bid {
 export default function PlayerPoolView({ 
     players, 
     currency,
+    budgetDenomination,
     userTeamId,
     isAdmin = false,
     onToggleInterest
 }: PlayerPoolViewProps) {
-    const [filter, setFilter] = useState<'all' | 'unsold' | 'sold' | 'shortlisted'>('all');
+    // Helper to format currency with denomination
+    const formatCurrency = (amount: number | string) => {
+        const num = Number(amount).toFixed(2);
+        if (budgetDenomination) {
+            return `${num} ${budgetDenomination} ${currency}`;
+        }
+        return `${num} ${currency}`;
+    };
+    const [filter, setFilter] = useState<'all' | 'yet-to-auction' | 'unsold' | 'sold' | 'shortlisted'>('all');
     const [tierFilter, setTierFilter] = useState<number | 'all'>('all');
     const [roleFilter, setRoleFilter] = useState<string | 'all'>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -79,7 +90,16 @@ export default function PlayerPoolView({
     const [playerBids, setPlayerBids] = useState<Bid[]>([]);
     const [loadingBids, setLoadingBids] = useState(false);
 
-    const unsoldPlayers = players.filter(p => p.status === 'UNSOLD');
+    // Players that haven't been auctioned yet (no auction history)
+    const yetToAuctionPlayers = players.filter(p => 
+        p.status === 'UNSOLD' && !p.isCurrentlyAuctioning && !p.hasBeenAuctioned
+    );
+    
+    // Players that went unsold in auction (were auctioned but didn't sell)
+    const actuallyUnsoldPlayers = players.filter(p => 
+        p.status === 'UNSOLD' && !p.isCurrentlyAuctioning && p.hasBeenAuctioned
+    );
+    
     const soldPlayers = players.filter(p => p.status === 'SOLD');
     
     // For admin: show all players with any interests; For teams: show only their shortlisted players
@@ -91,7 +111,14 @@ export default function PlayerPoolView({
 
     const filteredPlayers = players.filter(p => {
         // Status filter
-        if (filter === 'unsold' && p.status !== 'UNSOLD') return false;
+        if (filter === 'yet-to-auction') {
+            // Show only players not yet auctioned
+            if (p.status !== 'UNSOLD' || p.isCurrentlyAuctioning || p.hasBeenAuctioned) return false;
+        }
+        if (filter === 'unsold') {
+            // Show players that went unsold (have been auctioned but didn't sell)
+            if (p.status !== 'UNSOLD' || p.isCurrentlyAuctioning || !p.hasBeenAuctioned) return false;
+        }
         if (filter === 'sold' && p.status !== 'SOLD') return false;
         if (filter === 'shortlisted' && !myShortlist.some(mp => mp.id === p.id)) return false;
 
@@ -118,8 +145,8 @@ export default function PlayerPoolView({
 
     const getTierBadge = (tier?: number) => {
         if (!tier) return null;
-        const colors = ['🌟', '⭐', '✨', '💫', '🔹'];
-        return colors[tier - 1] || '🔹';
+        const labels = ['T1', 'T2', 'T3', 'T4', 'T5'];
+        return labels[tier - 1] || 'T5';
     };
 
     const fetchBidHistory = async (player: Player) => {
@@ -148,7 +175,7 @@ export default function PlayerPoolView({
             <div>
                 <h3 className="font-mono text-xl font-bold mb-2">PLAYER POOL</h3>
                 <p className="font-mono text-sm text-muted">
-                    Total: {players.length} | Sold: {soldPlayers.length} | Unsold: {unsoldPlayers.length}
+                    Total: {players.length} | Sold: {soldPlayers.length} | Yet to Auction: {yetToAuctionPlayers.length}
                     {userTeamId && ` | Your Shortlist: ${myShortlist.length}`}
                 </p>
             </div>
@@ -167,11 +194,18 @@ export default function PlayerPoolView({
                                 ALL ({players.length})
                             </Button>
                             <Button
+                                variant={filter === 'yet-to-auction' ? 'primary' : 'secondary'}
+                                onClick={() => setFilter('yet-to-auction')}
+                                className="text-xs"
+                            >
+                                YET TO AUCTION ({yetToAuctionPlayers.length})
+                            </Button>
+                            <Button
                                 variant={filter === 'unsold' ? 'primary' : 'secondary'}
                                 onClick={() => setFilter('unsold')}
                                 className="text-xs"
                             >
-                                UNSOLD ({unsoldPlayers.length})
+                                UNSOLD ({actuallyUnsoldPlayers.length})
                             </Button>
                             <Button
                                 variant={filter === 'sold' ? 'primary' : 'secondary'}
@@ -186,7 +220,7 @@ export default function PlayerPoolView({
                                     onClick={() => setFilter('shortlisted')}
                                     className="text-xs"
                                 >
-                                    ⭐ {isAdmin ? 'ALL SHORTLISTED' : 'SHORTLISTED'} ({myShortlist.length})
+                                    {isAdmin ? 'ALL SHORTLISTED' : 'SHORTLISTED'} ({myShortlist.length})
                                 </Button>
                             )}
                             {isAdmin && (
@@ -195,7 +229,7 @@ export default function PlayerPoolView({
                                     onClick={() => setShowStarPlayersOnly(!showStarPlayersOnly)}
                                     className="text-xs"
                                 >
-                                    ⭐ STAR PLAYERS ({starPlayers.length})
+                                    STAR PLAYERS ({starPlayers.length})
                                 </Button>
                             )}
                         </div>
@@ -210,11 +244,11 @@ export default function PlayerPoolView({
                                 className="w-full p-2 border-2 border-border bg-background font-mono text-sm"
                             >
                                 <option value="all">All Tiers</option>
-                                <option value="1">🌟 Tier 1 (Marquee)</option>
-                                <option value="2">⭐ Tier 2 (Star)</option>
-                                <option value="3">✨ Tier 3 (Established)</option>
-                                <option value="4">💫 Tier 4 (Emerging)</option>
-                                <option value="5">🔹 Tier 5 (Uncapped)</option>
+                                <option value="1">T1 - Marquee</option>
+                                <option value="2">T2 - Star</option>
+                                <option value="3">T3 - Established</option>
+                                <option value="4">T4 - Emerging</option>
+                                <option value="5">T5 - Uncapped</option>
                             </select>
                         </div>
 
@@ -268,10 +302,10 @@ export default function PlayerPoolView({
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            {player.isStarPlayer && <span className="text-xl">⭐</span>}
+                                            {player.isStarPlayer && <Badge status="live" className="text-xs px-2 py-0">STAR</Badge>}
                                             <h4 className="font-mono font-bold text-lg">{player.name}</h4>
                                             {player.marqueeSet && (
-                                                <span className="text-lg">{getTierBadge(player.marqueeSet)}</span>
+                                                <Badge status="active" className="text-xs px-2 py-0">{getTierBadge(player.marqueeSet)}</Badge>
                                             )}
                                         </div>
                                         {player.role && (
@@ -288,7 +322,7 @@ export default function PlayerPoolView({
                                             <Badge status="upcoming">UNSOLD</Badge>
                                         )}
                                         {hasBids && (
-                                            <span className="text-xs text-accent font-mono">📊 View Bids</span>
+                                            <span className="text-xs text-accent font-mono">View Bids</span>
                                         )}
                                     </div>
                                 </div>
@@ -301,7 +335,7 @@ export default function PlayerPoolView({
                                     <div>
                                         <p className="font-mono text-xs text-muted">Base Price</p>
                                         <p className="font-mono font-bold text-accent">
-                                            {Number(player.basePrice).toFixed(2)} {currency}
+                                            {formatCurrency(player.basePrice)}
                                         </p>
                                     </div>
                                     {player.team && (
@@ -350,7 +384,7 @@ export default function PlayerPoolView({
                                         onClick={() => onToggleInterest(player.id, shortlisted)}
                                         className="w-full text-xs"
                                     >
-                                        {shortlisted ? '⭐ SHORTLISTED' : '☆ ADD TO SHORTLIST'}
+                                        {shortlisted ? 'SHORTLISTED' : 'ADD TO SHORTLIST'}
                                     </Button>
                                 )}
                             </Card>
@@ -367,8 +401,8 @@ export default function PlayerPoolView({
                             <div className="flex items-start justify-between mb-4">
                                 <div>
                                     <h3 className="font-mono text-xl font-bold mb-1">
-                                        {selectedPlayerForBids.isStarPlayer && '⭐ '}
                                         {selectedPlayerForBids.name}
+                                        {selectedPlayerForBids.isStarPlayer && <Badge status="live" className="ml-2 text-xs">STAR</Badge>}
                                     </h3>
                                     <p className="font-mono text-sm text-muted">{selectedPlayerForBids.role}</p>
                                 </div>
@@ -423,7 +457,7 @@ export default function PlayerPoolView({
                                             >
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="flex items-center gap-2">
-                                                        {isWinningBid && <span className="text-lg">🏆</span>}
+                                                        {isWinningBid && <Badge status="live" className="text-xs">HIGHEST</Badge>}
                                                         <div>
                                                             {teamInfo && (
                                                                 <p
