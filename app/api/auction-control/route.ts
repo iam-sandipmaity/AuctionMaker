@@ -179,10 +179,13 @@ async function handleStartPlayerAuction(body: any, userId: string) {
         );
     }
 
-    // Update player to currently auctioning
+    // Update player to currently auctioning and mark as has been auctioned
     await prisma.player.update({
         where: { id: validatedData.playerId },
-        data: { isCurrentlyAuctioning: true },
+        data: { 
+            isCurrentlyAuctioning: true,
+            hasBeenAuctioned: true, // Mark that this player has been put up for auction
+        },
     });
 
     // Update auction's current player
