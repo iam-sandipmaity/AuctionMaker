@@ -7,8 +7,7 @@ export interface User {
     email: string;
     name: string;
     username: string;
-    wallet: number | Decimal;
-    totalBudget: number | Decimal;
+    preferredCurrency: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -26,6 +25,7 @@ export interface Auction {
     status: 'UPCOMING' | 'LIVE' | 'ENDED';
     maxParticipants?: number | null;
     currency: string;
+    budgetDenomination?: string | null;
     imageUrl?: string | null;
     winnerId?: string | null;
     createdById: string;
