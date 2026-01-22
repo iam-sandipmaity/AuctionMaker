@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface Team {
     id: string;
@@ -49,6 +50,7 @@ export default function AuctioneerControl({
     auctionStatus,
     currency 
 }: AuctioneerControlProps) {
+    const { showToast } = useToast();
     const [teams, setTeams] = useState<Team[]>([]);
     const [players, setPlayers] = useState<Player[]>([]);
     const [loading, setLoading] = useState(false);
@@ -368,7 +370,7 @@ export default function AuctioneerControl({
                                 <Button 
                                     onClick={() => {
                                         // This would need the winning bid ID - implement based on your bid tracking
-                                        alert('Sell to highest bidder - check bids section');
+                                        showToast('Sell to highest bidder - check bids section', 'info');
                                     }}
                                     variant="primary"
                                     disabled={loading}
