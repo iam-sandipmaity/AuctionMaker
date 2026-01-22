@@ -5,6 +5,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface Player {
     id: string;
@@ -28,19 +29,32 @@ interface AdminPlayerManagerProps {
     players: Player[];
     onPlayerAdded: () => void;
     currency: string;
+    budgetDenomination?: string;
 }
 
 export default function AdminPlayerManager({ 
     auctionId, 
     players, 
     onPlayerAdded,
-    currency
+    currency,
+    budgetDenomination
 }: AdminPlayerManagerProps) {
+    const { showToast, showConfirm } = useToast();
     const [showForm, setShowForm] = useState(false);
     const [showBulkImport, setShowBulkImport] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
+    
+    // Helper to format currency with denomination
+    const formatCurrency = (amount: number | string) => {
+        const num = Number(amount).toFixed(2);
+        if (budgetDenomination) {
+            return `${num} ${budgetDenomination} ${currency}`;
+        }
+        return `${num} ${currency}`;
+    };
+
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -94,23 +108,24 @@ export default function AdminPlayerManager({
     };
 
     const handleDelete = async (playerId: string) => {
-        if (!confirm('Are you sure you want to delete this player?')) return;
+        showConfirm('Are you sure you want to delete this player?', async () => {
+            try {
+                const response = await fetch(`/api/players?playerId=${playerId}`, {
+                    method: 'DELETE',
+                });
 
-        try {
-            const response = await fetch(`/api/players?playerId=${playerId}`, {
-                method: 'DELETE',
-            });
+                if (!response.ok) {
+                    const data = await response.json();
+                    showToast(data.error || 'Failed to delete player', 'error');
+                    return;
+                }
 
-            if (!response.ok) {
-                const data = await response.json();
-                alert(data.error || 'Failed to delete player');
-                return;
+                showToast('Player deleted successfully', 'success');
+                onPlayerAdded();
+            } catch {
+                showToast('An error occurred. Please try again.', 'error');
             }
-
-            onPlayerAdded();
-        } catch {
-            alert('An error occurred. Please try again.');
-        }
+        });
     };
 
     const unsoldPlayers = players.filter(p => p.status === 'UNSOLD');
@@ -146,7 +161,7 @@ export default function AdminPlayerManager({
                 return;
             }
 
-            alert(`Successfully imported ${data.data.count} players`);
+            showToast(`Successfully imported ${data.data.count} players`, 'success');
             setBulkImportFile(null);
             setShowBulkImport(false);
             onPlayerAdded();
@@ -243,7 +258,7 @@ Shubman Gill,Young batsman,Batsman,300000,,5`;
                             setShowForm(false);
                         }}
                     >
-                        {showBulkImport ? 'CANCEL' : '📁 BULK IMPORT'}
+                        {showBulkImport ? 'CANCEL' : 'BULK IMPORT'}
                     </Button>
                     <Button
                         variant="primary"
@@ -272,10 +287,10 @@ Shubman Gill,Young batsman,Batsman,300000,,5`;
                         </ul>
                         <div className="flex gap-2 mt-3">
                             <Button variant="secondary" onClick={downloadSampleCSV} className="text-xs">
-                                📥 Download Sample CSV
+                                DOWNLOAD SAMPLE CSV
                             </Button>
                             <Button variant="secondary" onClick={downloadSampleJSON} className="text-xs">
-                                📥 Download Sample JSON
+                                DOWNLOAD SAMPLE JSON
                             </Button>
                         </div>
                     </div>
@@ -314,7 +329,7 @@ Shubman Gill,Young batsman,Batsman,300000,,5`;
                             disabled={loading || !bulkImportFile}
                             className="w-full"
                         >
-                            {loading ? 'IMPORTING...' : '📤 IMPORT PLAYERS'}
+                            {loading ? 'IMPORTING...' : 'IMPORT PLAYERS'}
                         </Button>
                     </form>
                 </Card>
@@ -370,7 +385,7 @@ Shubman Gill,Young batsman,Batsman,300000,,5`;
                         </div>
 
                         <Input
-                            label={`Base Price (${currency})`}
+                            label={`Base Price (${budgetDenomination ? budgetDenomination + ' ' : ''}${currency})`}
                             type="number"
                             value={formData.basePrice}
                             onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
@@ -436,7 +451,7 @@ Shubman Gill,Young batsman,Batsman,300000,,5`;
                                 <div className="flex justify-between text-sm">
                                     <span className="font-mono text-muted">Base Price:</span>
                                     <span className="font-mono font-bold">
-                                        {Number(player.basePrice).toFixed(2)} {currency}
+                                        {formatCurrency(player.basePrice)}
                                     </span>
                                 </div>
                             </Card>
@@ -474,14 +489,14 @@ Shubman Gill,Young batsman,Batsman,300000,,5`;
                                     <div className="flex justify-between">
                                         <span className="font-mono text-muted">Base:</span>
                                         <span className="font-mono">
-                                            {Number(player.basePrice).toFixed(2)} {currency}
+                                            {formatCurrency(player.basePrice)}
                                         </span>
                                     </div>
                                     {player.soldPrice && (
                                         <div className="flex justify-between">
                                             <span className="font-mono text-muted">Sold:</span>
                                             <span className="font-mono font-bold text-accent">
-                                                {Number(player.soldPrice).toFixed(2)} {currency}
+                                                {formatCurrency(player.soldPrice)}
                                             </span>
                                         </div>
                                     )}
