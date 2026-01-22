@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import { getAuctionById } from '@/lib/db/auctions';
-import AuctionRoomClient from '@/components/auction/AuctionRoomClient';
-import TeamAuctionRoomClient from '@/components/auction/TeamAuctionRoomClient';
+import { AuctionRoomClient, TeamAuctionRoomClient } from '@/components/LazyComponents';
 
-export const dynamic = 'force-dynamic';
+// Revalidate every 10 seconds for auction details
+export const revalidate = 10;
 
 interface AuctionPageProps {
     params: Promise<{
@@ -26,6 +26,7 @@ export default async function AuctionPage({ params }: AuctionPageProps) {
         startingPrice: parseFloat(auction.startingPrice.toString()),
         currentPrice: parseFloat(auction.currentPrice.toString()),
         minIncrement: parseFloat(auction.minIncrement.toString()),
+        budgetDenomination: auction.budgetDenomination ?? undefined,
         teamBudget: auction.teamBudget ? parseFloat(auction.teamBudget.toString()) : undefined,
         minSquadSize: auction.minSquadSize ?? undefined,
         maxSquadSize: auction.maxSquadSize ?? undefined,
