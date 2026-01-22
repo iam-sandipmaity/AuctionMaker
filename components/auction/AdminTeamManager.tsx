@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface Team {
     id: string;
@@ -22,6 +23,7 @@ interface AdminTeamManagerProps {
     onTeamAdded: () => void;
     teamBudget: number;
     currency: string;
+    budgetDenomination?: string;
 }
 
 export default function AdminTeamManager({ 
@@ -29,13 +31,25 @@ export default function AdminTeamManager({
     teams, 
     onTeamAdded,
     teamBudget,
-    currency
+    currency,
+    budgetDenomination
 }: AdminTeamManagerProps) {
+    const { showToast, showConfirm } = useToast();
     const [showForm, setShowForm] = useState(false);
     const [showBulkImport, setShowBulkImport] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
+    
+    // Helper to format currency with denomination
+    const formatCurrency = (amount: number | string) => {
+        const num = Number(amount).toFixed(2);
+        if (budgetDenomination) {
+            return `${num} ${budgetDenomination} ${currency}`;
+        }
+        return `${num} ${currency}`;
+    };
+
     const [formData, setFormData] = useState({
         name: '',
         shortName: '',
@@ -82,23 +96,24 @@ export default function AdminTeamManager({
     };
 
     const handleDelete = async (teamId: string) => {
-        if (!confirm('Are you sure you want to delete this team?')) return;
+        showConfirm('Are you sure you want to delete this team?', async () => {
+            try {
+                const response = await fetch(`/api/teams?teamId=${teamId}`, {
+                    method: 'DELETE',
+                });
 
-        try {
-            const response = await fetch(`/api/teams?teamId=${teamId}`, {
-                method: 'DELETE',
-            });
+                if (!response.ok) {
+                    const data = await response.json();
+                    showToast(data.error || 'Failed to delete team', 'error');
+                    return;
+                }
 
-            if (!response.ok) {
-                const data = await response.json();
-                alert(data.error || 'Failed to delete team');
-                return;
+                showToast('Team deleted successfully', 'success');
+                onTeamAdded();
+            } catch {
+                showToast('An error occurred. Please try again.', 'error');
             }
-
-            onTeamAdded();
-        } catch {
-            alert('An error occurred. Please try again.');
-        }
+        });
     };
 
     const handleBulkImport = async (e: React.FormEvent) => {
@@ -131,7 +146,7 @@ export default function AdminTeamManager({
                 return;
             }
 
-            alert(`Successfully imported ${data.data.count} teams`);
+            showToast(`Successfully imported ${data.data.count} teams`, 'success');
             setBulkImportFile(null);
             setShowBulkImport(false);
             onTeamAdded();
@@ -215,7 +230,7 @@ Lucknow Super Giants,LSG,#4E9ED9,`;
                             setShowForm(false);
                         }}
                     >
-                        {showBulkImport ? 'CANCEL' : '📁 BULK IMPORT'}
+                        {showBulkImport ? 'CANCEL' : 'BULK IMPORT'}
                     </Button>
                     <Button
                         variant="primary"
@@ -240,14 +255,14 @@ Lucknow Super Giants,LSG,#4E9ED9,`;
                             <li>• Required: name, short name, color (hex code)</li>
                             <li>• Optional: logo url</li>
                             <li>• Color format: #RRGGBB (e.g., #FF0000 for red)</li>
-                            <li>• Budget: {teamBudget} {currency} (auto-assigned)</li>
+                            <li>• Budget: {formatCurrency(teamBudget)} (auto-assigned)</li>
                         </ul>
                         <div className="flex gap-2 mt-3">
                             <Button variant="secondary" onClick={downloadSampleCSV} className="text-xs">
-                                📥 Download Sample CSV
+                                DOWNLOAD SAMPLE CSV
                             </Button>
                             <Button variant="secondary" onClick={downloadSampleJSON} className="text-xs">
-                                📥 Download Sample JSON
+                                DOWNLOAD SAMPLE JSON
                             </Button>
                         </div>
                     </div>
@@ -286,7 +301,7 @@ Lucknow Super Giants,LSG,#4E9ED9,`;
                             disabled={loading || !bulkImportFile}
                             className="w-full"
                         >
-                            {loading ? 'IMPORTING...' : '📤 IMPORT TEAMS'}
+                            {loading ? 'IMPORTING...' : 'IMPORT TEAMS'}
                         </Button>
                     </form>
                 </Card>
@@ -403,7 +418,7 @@ Lucknow Super Giants,LSG,#4E9ED9,`;
                             <div className="flex justify-between text-sm">
                                 <span className="font-mono text-muted">Budget:</span>
                                 <span className="font-mono font-bold">
-                                    {Number(team.budget).toFixed(2)} {currency}
+                                    {formatCurrency(team.budget)}
                                 </span>
                             </div>
                             <div className="flex justify-between text-sm">
