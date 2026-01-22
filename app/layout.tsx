@@ -5,6 +5,9 @@ import Header from "@/components/layout/Header";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import SessionProvider from "@/components/SessionProvider";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import PageLoadingProvider from "@/components/PageLoadingProvider";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const spaceGrotesk = Space_Grotesk({
     subsets: ["latin"],
@@ -41,23 +44,32 @@ export default async function RootLayout({
                 className={`${spaceGrotesk.variable} ${spaceMono.variable} ${inter.variable} antialiased`}
             >
                 <SessionProvider session={session}>
-                    <Header />
-                    <main className="min-h-screen">
-                        {children}
-                    </main>
-                    <footer className="bg-gray-900 text-gray-400 py-6 mt-auto border-t border-gray-800">
-                        <div className="container mx-auto px-4 text-center">
-                            <p className="text-sm">
-                                Made by{" "}
+                    <ToastProvider>
+                        <PageLoadingProvider>
+                            <Header />
+                            <ErrorBoundary>
+                                <main className="min-h-screen">
+                                    {children}
+                                </main>
+                            </ErrorBoundary>
+                        </PageLoadingProvider>
+                    </ToastProvider>
+                    <footer className="bg-background text-foreground py-8 mt-auto border-t-3 border-border">
+                        <div className="container mx-auto px-4">
+                            <p className="font-mono text-sm uppercase tracking-wider text-center flex items-center justify-center gap-2">
+                                <span>Made by</span>
                                 <a 
                                     href="https://sandipmaity.me" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
-                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                    className="text-accent hover:text-foreground font-bold transition-colors duration-200 border-b-2 border-accent hover:border-foreground inline-block"
                                 >
                                     sandipmaity.me
                                 </a>
-                                {" "}© {new Date().getFullYear()}
+                                <span className="inline-flex items-center gap-1">
+                                    <span className="text-sm flex items-center justify-center">©</span>
+                                    <span>{new Date().getFullYear()}</span>
+                                </span>
                             </p>
                         </div>
                     </footer>
