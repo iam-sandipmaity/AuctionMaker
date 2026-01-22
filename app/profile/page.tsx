@@ -1,10 +1,11 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
-import ProfileClient from '@/components/profile/ProfileClient';
+import { ProfileClient } from '@/components/LazyComponents';
 import prisma from '@/lib/db/prisma';
 
-export const dynamic = 'force-dynamic';
+// Revalidate every 5 minutes for profile data
+export const revalidate = 300;
 
 export default async function ProfilePage() {
     const session = await getServerSession(authOptions);
