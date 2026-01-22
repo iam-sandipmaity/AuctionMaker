@@ -32,7 +32,7 @@ export const authOptions: NextAuthOptions = {
                     email: user.email,
                     name: user.name,
                     username: user.username,
-                    wallet: user.wallet.toString(),
+                    preferredCurrency: user.preferredCurrency,
                 };
             },
         }),
@@ -42,7 +42,7 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id;
                 token.username = user.username;
-                token.wallet = user.wallet;
+                token.preferredCurrency = user.preferredCurrency;
             }
             return token;
         },
@@ -50,7 +50,7 @@ export const authOptions: NextAuthOptions = {
             if (session.user) {
                 session.user.id = token.id as string;
                 session.user.username = token.username as string;
-                session.user.wallet = token.wallet as string;
+                session.user.preferredCurrency = token.preferredCurrency as string;
             }
             return session;
         },
