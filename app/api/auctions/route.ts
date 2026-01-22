@@ -14,7 +14,7 @@ const createAuctionSchema = z.object({
     duration: z.number().positive(), // in minutes
     maxParticipants: z.number().positive().optional(),
     currency: z.string().default('USD'),
-    budgetDenomination: z.string().min(1).optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
+    budgetDenomination: z.string().optional(),
     imageUrl: z.string().url().optional(),
     // Team auction specific
     teamBudget: z.number().positive().optional(),
@@ -57,7 +57,9 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
+        console.log('Received auction creation request:', body);
         const validatedData = createAuctionSchema.parse(body);
+        console.log('Validated data:', validatedData);
 
         const now = new Date();
         const endTime = new Date(now.getTime() + validatedData.duration * 60 * 1000);
@@ -72,7 +74,6 @@ export async function POST(request: NextRequest) {
             endTime: endTime,
             maxParticipants: validatedData.maxParticipants,
             currency: validatedData.currency,
-            budgetDenomination: validatedData.budgetDenomination || null,
             imageUrl: validatedData.imageUrl,
             createdById: session.user.id,
         };
@@ -84,15 +85,17 @@ export async function POST(request: NextRequest) {
             auctionData.maxSquadSize = validatedData.maxSquadSize;
             auctionData.status = 'UPCOMING'; // Team auctions start in UPCOMING status
             
-            // Ensure team auctions have a budget denomination
-            if (!auctionData.budgetDenomination) {
-                // Set default based on currency
-                if (validatedData.currency === 'INR') {
-                    auctionData.budgetDenomination = 'Crores';
-                } else {
-                    auctionData.budgetDenomination = 'Million';
-                }
+            // Set budget denomination - use from request or default based on currency
+            if (validatedData.budgetDenomination && validatedData.budgetDenomination.trim() !== '') {
+                auctionData.budgetDenomination = validatedData.budgetDenomination;
+            } else {
+                // Set default based on currency for team auctions
+                auctionData.budgetDenomination = validatedData.currency === 'INR' ? 'Crores' : 'Million';
             }
+            console.log('Final auction data for team auction:', auctionData);
+        } else {
+            // For product auctions, denomination is optional
+            auctionData.budgetDenomination = validatedData.budgetDenomination || null;
         }
 
         const auction = await createAuction(auctionData);
