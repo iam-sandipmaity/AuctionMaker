@@ -8,14 +8,29 @@ You can import multiple players at once using CSV or JSON files. This is perfect
 ### CSV Format
 Create a CSV file with the following columns:
 
+**Example with decimal values (e.g., for Crores denomination):**
+```csv
+name,description,role,base price,avatar url,marquee set,star player
+Virat Kohli,Indian cricket captain,Batsman,2.5,https://example.com/virat.jpg,1,true
+Jasprit Bumrah,Fast bowler,Bowler,2.0,,1,true
+Ravindra Jadeja,All-rounder,All-rounder,1.5,,2,false
+Hardik Pandya,All-rounder,All-rounder,1.25,,2,false
+Rishabh Pant,Wicket-keeper batsman,Wicket-keeper,1.0,,3,false
+```
+
+**Example with integer values (e.g., for raw currency amounts):**
 ```csv
 name,description,role,base price,avatar url,marquee set
 Virat Kohli,Indian cricket captain,Batsman,2000000,https://example.com/virat.jpg,1
 Jasprit Bumrah,Fast bowler,Bowler,1800000,,1
 Ravindra Jadeja,All-rounder,All-rounder,1500000,,2
-Hardik Pandya,All-rounder,All-rounder,1200000,,2
-Rishabh Pant,Wicket-keeper batsman,Wicket-keeper,1000000,,3
 ```
+
+**Important Notes:**
+- Use **decimal point** (`.`) for decimal values, e.g., `2.5` for 2.5 Crores
+- If your CSV has commas in descriptions, wrap the text in quotes: `"Fast bowler, right arm"`
+- Both integer and decimal values are supported
+- For European locales using comma as decimal separator, the system will automatically convert commas to decimal points
 
 **Column Headers (flexible naming):**
 - `name` / `player name` / `playername` - **REQUIRED**
@@ -28,6 +43,37 @@ Rishabh Pant,Wicket-keeper batsman,Wicket-keeper,1000000,,3
 ### JSON Format
 Create a JSON file with an array of player objects:
 
+**Example with decimal values:**
+```json
+[
+  {
+    "name": "Virat Kohli",
+    "description": "Indian cricket captain",
+    "role": "Batsman",
+    "basePrice": 2.5,
+    "avatarUrl": "https://example.com/virat.jpg",
+    "marqueeSet": 1,
+    "isStarPlayer": true
+  },
+  {
+    "name": "Jasprit Bumrah",
+    "description": "Fast bowler",
+    "role": "Bowler",
+    "basePrice": 2.0,
+    "marqueeSet": 1,
+    "isStarPlayer": true
+  },
+  {
+    "name": "Ravindra Jadeja",
+    "description": "All-rounder",
+    "role": "All-rounder",
+    "basePrice": 1.5,
+    "marqueeSet": 2
+  }
+]
+```
+
+**Example with integer values:**
 ```json
 [
   {
@@ -37,13 +83,6 @@ Create a JSON file with an array of player objects:
     "basePrice": 2000000,
     "avatarUrl": "https://example.com/virat.jpg",
     "marqueeSet": 1
-  },
-  {
-    "name": "Jasprit Bumrah",
-    "description": "Fast bowler",
-    "role": "Bowler",
-    "basePrice": 1800000,
-    "marqueeSet": 1
   }
 ]
 ```
@@ -52,9 +91,10 @@ Create a JSON file with an array of player objects:
 - `name` - **REQUIRED** - Player name
 - `description` - Optional - Player details/stats
 - `role` - Optional - Position (Batsman/Bowler/All-rounder/Wicket-keeper)
-- `basePrice` - **REQUIRED** - Starting bid price (number)
+- `basePrice` - **REQUIRED** - Starting bid price (supports both integers and decimals, e.g., 2.5 or 2500000)
 - `avatarUrl` - Optional - Player photo URL
 - `marqueeSet` - Optional - Tier level (1-5, default: 5)
+- `isStarPlayer` - Optional - Mark as priority player (true/false, default: false)
 
 ## Marquee Set Tiers
 
@@ -86,9 +126,38 @@ Valid role values:
 ## Validation Rules
 
 - **Name** must not be empty
-- **Base price** must be a positive number
+- **Base price** must be a positive number (supports decimals like 2.5)
 - **Marquee set** must be between 1-5 (if provided)
 - All validation errors will be shown if upload fails
+
+## Understanding Base Prices & Denominations
+
+The base price you enter depends on your auction's **denomination setting**:
+
+### If your auction uses "Crores" denomination:
+- Enter `2.5` for 2.5 Crores
+- Enter `1.0` for 1 Crore
+- Enter `0.5` for 50 Lakhs (0.5 Crore)
+
+### If your auction uses "Million" denomination:
+- Enter `2.5` for 2.5 Million
+- Enter `1.0` for 1 Million
+- Enter `0.25` for 250 Thousand
+
+### If your auction uses "Lakhs" denomination:
+- Enter `25` for 25 Lakhs
+- Enter `10.5` for 10.5 Lakhs
+- Enter `5.0` for 5 Lakhs
+
+### If your auction uses "Thousand" denomination:
+- Enter `2500` for 2500 Thousand (2.5 Million)
+- Enter `1000` for 1000 Thousand (1 Million)
+
+### Raw currency values (no denomination):
+- Enter the full amount: `2500000` for 2.5 Million
+- The system will display it according to the auction's denomination setting
+
+**Recommendation:** Use decimal values matching your denomination for easier management.
 
 ## Tips
 
