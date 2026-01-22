@@ -1,6 +1,6 @@
 import { getAuctionById } from '@/lib/db/auctions';
-import { getUserById } from '@/lib/db/users';
 import { getHighestBid } from '@/lib/db/bids';
+import prisma from '@/lib/db/prisma';
 
 export interface BidValidationResult {
     valid: boolean;
@@ -10,7 +10,8 @@ export interface BidValidationResult {
 export async function validateBid(
     auctionId: string,
     userId: string,
-    amount: number
+    amount: number,
+    playerId?: string
 ): Promise<BidValidationResult> {
     // Get auction details
     const auction = await getAuctionById(auctionId);
@@ -28,29 +29,18 @@ export async function validateBid(
         return { valid: false, error: 'Auction has ended' };
     }
 
-    // For TEAM auctions, validate team budget instead of user wallet
-    if (auction.auctionType === 'TEAM') {
-        // Team budget validation will be handled separately
-        // Skip user wallet check for team auctions
-    } else {
-        // Get user details for standard auctions
-        const user = await getUserById(userId);
-        if (!user) {
-            return { valid: false, error: 'User not found' };
-        }
-
-        // Check user wallet balance
-        const userWallet = typeof user.wallet === 'object'
-            ? parseFloat(user.wallet.toString())
-            : user.wallet;
-
-        if (userWallet < amount) {
-            return { valid: false, error: 'Insufficient wallet balance' };
-        }
-    }
-
     // Get current highest bid
-    const highestBid = await getHighestBid(auctionId);
+    // For team auctions with a specific player, get the highest bid for that player only
+    const highestBid = playerId 
+        ? await prisma.bid.findFirst({
+            where: {
+                auctionId,
+                playerId,
+                isWinning: true,
+            },
+          })
+        : await getHighestBid(auctionId);
+    
     const currentPrice = highestBid
         ? (typeof highestBid.amount === 'object'
             ? parseFloat(highestBid.amount.toString())
@@ -77,7 +67,7 @@ export async function validateBid(
     if (roundedAmount < minimumBid) {
         return {
             valid: false,
-            error: `Bid must be at least $${minimumBid.toFixed(2)}`
+            error: `Bid must be at least ${minimumBid.toFixed(2)} ${auction.currency}`
         };
     }
 
