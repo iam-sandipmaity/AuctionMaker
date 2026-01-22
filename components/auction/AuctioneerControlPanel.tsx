@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface Player {
     id: string;
@@ -16,6 +17,7 @@ interface Player {
     isCurrentlyAuctioning: boolean;
     marqueeSet?: number;
     isStarPlayer?: boolean;
+    hasBeenAuctioned?: boolean;
     team?: {
         id: string;
         name: string;
@@ -54,6 +56,7 @@ interface AuctioneerControlPanelProps {
     players: Player[];
     currentBids: Bid[];
     currency: string;
+    budgetDenomination?: string;
 }
 
 export default function AuctioneerControlPanel({
@@ -62,9 +65,24 @@ export default function AuctioneerControlPanel({
     players,
     currentBids,
     currency,
+    budgetDenomination,
 }: AuctioneerControlPanelProps) {
+    const { showConfirm } = useToast();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Helper to format currency with denomination
+    const formatCurrency = (amount: number | string) => {
+        const num = Number(amount).toFixed(2);
+        if (budgetDenomination) {
+            return `${num} ${budgetDenomination} ${currency}`;
+        }
+        return `${num} ${currency}`;
+    };
+    const [tierFilter, setTierFilter] = useState<'all' | number>('all');
+    const [roleFilter, setRoleFilter] = useState<string>('all');
+    const [showShortlistedOnly, setShowShortlistedOnly] = useState(false);
+    const [showUnsoldOnly, setShowUnsoldOnly] = useState(false);
 
     const unsoldPlayers = players.filter(p => p.status === 'UNSOLD' && !p.isCurrentlyAuctioning);
     
@@ -78,11 +96,39 @@ export default function AuctioneerControlPanel({
     );
     
     // Combined list for auctioneer: all tier 1-3 + interested tier 4-5
-    const playersToAuction = [...tier1to3Players, ...tier4to5WithInterest].sort((a, b) => {
+    let playersToAuction = [...tier1to3Players, ...tier4to5WithInterest];
+
+    // Apply filters
+    if (tierFilter !== 'all') {
+        playersToAuction = playersToAuction.filter(p => (p.marqueeSet || 5) === tierFilter);
+    }
+    if (roleFilter !== 'all') {
+        playersToAuction = playersToAuction.filter(p => p.role === roleFilter);
+    }
+    if (showShortlistedOnly) {
+        playersToAuction = playersToAuction.filter(p => 
+            p.interestedTeams && p.interestedTeams.length > 0
+        );
+    }
+    if (showUnsoldOnly) {
+        // Show only players that went unsold but now have team interest (second chance)
+        playersToAuction = playersToAuction.filter(p => 
+            p.status === 'UNSOLD' && 
+            p.hasBeenAuctioned === true && // Player was previously auctioned
+            p.interestedTeams && 
+            p.interestedTeams.length > 0
+        );
+    }
+
+    // Sort by tier
+    playersToAuction.sort((a, b) => {
         const tierA = a.marqueeSet || 5;
         const tierB = b.marqueeSet || 5;
         return tierA - tierB;
     });
+
+    // Get unique roles for filter
+    const availableRoles = Array.from(new Set(unsoldPlayers.map(p => p.role).filter(Boolean))) as string[];
 
     const highestBid = currentBids.length > 0 ? currentBids[0] : null;
 
@@ -119,18 +165,15 @@ export default function AuctioneerControlPanel({
     const handleSellPlayer = async () => {
         if (!currentPlayer || !highestBid) return;
 
-        if (!confirm(`Sell ${currentPlayer.name} to ${highestBid.team?.shortName} for ${highestBid.amount} ${currency}?`)) {
-            return;
-        }
+        showConfirm(`Sell ${currentPlayer.name} to ${highestBid.team?.shortName} for ${formatCurrency(highestBid.amount)}?`, async () => {
+            setLoading(true);
+            setError('');
 
-        setLoading(true);
-        setError('');
-
-        try {
-            const response = await fetch('/api/auction-control', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            try {
+                const response = await fetch('/api/auction-control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
                     action: 'end-player',
                     auctionId,
                     playerId: currentPlayer.id,
@@ -152,27 +195,25 @@ export default function AuctioneerControlPanel({
         } finally {
             setLoading(false);
         }
+        });
     };
 
     const handleUnsoldPlayer = async () => {
         if (!currentPlayer) return;
 
-        if (!confirm(`Mark ${currentPlayer.name} as UNSOLD?`)) {
-            return;
-        }
+        showConfirm(`Mark ${currentPlayer.name} as UNSOLD?`, async () => {
+            setLoading(true);
+            setError('');
 
-        setLoading(true);
-        setError('');
-
-        try {
-            const response = await fetch('/api/auction-control', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'end-player',
-                    auctionId,
-                    playerId: currentPlayer.id,
-                    sold: false,
+            try {
+                const response = await fetch('/api/auction-control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'end-player',
+                        auctionId,
+                        playerId: currentPlayer.id,
+                        sold: false,
                 }),
             });
 
@@ -184,17 +225,18 @@ export default function AuctioneerControlPanel({
             }
 
             // Data updates via socket event (player:unsold), no need to refresh
-        } catch {
-            setError('An error occurred. Please try again.');
-        } finally {
-            setLoading(false);
-        }
+            } catch {
+                setError('An error occurred. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        });
     };
 
     return (
         <div className="space-y-5 md:space-y-5 lg:space-y-6">
             <Card className="p-5 md:p-6 lg:p-6 bg-accent/10 border-accent">
-                <h3 className="font-mono text-lg md:text-xl font-bold text-accent mb-4">🎤 AUCTIONEER CONTROL PANEL</h3>
+                <h3 className="font-mono text-lg md:text-xl font-bold text-accent mb-4">AUCTIONEER CONTROL PANEL</h3>
                 
                 {error && (
                     <div className="mb-4 p-3 border-3 border-red-500 bg-red-500/10">
@@ -216,7 +258,7 @@ export default function AuctioneerControlPanel({
                             <div className="mt-3 flex justify-between items-center">
                                 <span className="font-mono text-sm text-muted">Base Price:</span>
                                 <span className="font-mono font-bold">
-                                    {Number(currentPlayer.basePrice).toFixed(2)} {currency}
+                                    {formatCurrency(currentPlayer.basePrice)}
                                 </span>
                             </div>
                         </div>
@@ -237,7 +279,7 @@ export default function AuctioneerControlPanel({
                                         </p>
                                     </div>
                                     <p className="font-mono text-2xl md:text-3xl font-bold text-accent">
-                                        {highestBid.amount} {currency}
+                                        {formatCurrency(highestBid.amount)}
                                     </p>
                                 </div>
                             </div>
@@ -279,7 +321,7 @@ export default function AuctioneerControlPanel({
                                             <span style={{ color: bid.team?.color }}>
                                                 {bid.team?.shortName || bid.user?.username || 'Unknown'}
                                             </span>
-                                            <span>{bid.amount} {currency}</span>
+                                            <span>{formatCurrency(bid.amount)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -299,11 +341,94 @@ export default function AuctioneerControlPanel({
             </Card>
 
             {/* Available Players */}
-            {playersToAuction.length > 0 && (
+            {(tier1to3Players.length > 0 || tier4to5WithInterest.length > 0) && (
                 <div>
+                    {/* Filter Controls */}
+                    <Card className="p-4 mb-4">
+                        <h4 className="font-mono text-sm font-bold mb-3">FILTERS</h4>
+                        <div className="grid md:grid-cols-4 gap-3">
+                            {/* Tier Filter */}
+                            <div>
+                                <label className="font-mono text-xs uppercase tracking-wider mb-2 block">
+                                    Tier
+                                </label>
+                                <select
+                                    value={tierFilter}
+                                    onChange={(e) => setTierFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                                    className="w-full p-2 border-3 border-border bg-background font-mono text-sm"
+                                >
+                                    <option value="all">All Tiers</option>
+                                    <option value="1">T1 - Marquee</option>
+                                    <option value="2">T2 - Star</option>
+                                    <option value="3">T3 - Established</option>
+                                    <option value="4">T4 - Emerging</option>
+                                    <option value="5">T5 - Uncapped</option>
+                                </select>
+                            </div>
+
+                            {/* Role Filter */}
+                            <div>
+                                <label className="font-mono text-xs uppercase tracking-wider mb-2 block">
+                                    Role
+                                </label>
+                                <select
+                                    value={roleFilter}
+                                    onChange={(e) => setRoleFilter(e.target.value)}
+                                    className="w-full p-2 border-3 border-border bg-background font-mono text-sm"
+                                >
+                                    <option value="all">All Roles</option>
+                                    {availableRoles.map(role => (
+                                        <option key={role} value={role}>{role}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Shortlisted Only Checkbox */}
+                            <div className="flex items-end">
+                                <label className="flex items-center gap-2 cursor-pointer p-2 border-3 border-border bg-background hover:border-accent transition-colors w-full">
+                                    <input
+                                        type="checkbox"
+                                        checked={showShortlistedOnly}
+                                        onChange={(e) => setShowShortlistedOnly(e.target.checked)}
+                                        className="w-4 h-4"
+                                    />
+                                    <span className="font-mono text-xs uppercase">
+                                        Shortlisted Only
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* Unsold Only Checkbox (Second Chance) */}
+                            <div className="flex items-end">
+                                <label className="flex items-center gap-2 cursor-pointer p-2 border-3 border-border bg-background hover:border-accent transition-colors w-full">
+                                    <input
+                                        type="checkbox"
+                                        checked={showUnsoldOnly}
+                                        onChange={(e) => setShowUnsoldOnly(e.target.checked)}
+                                        className="w-4 h-4"
+                                    />
+                                    <span className="font-mono text-xs uppercase">
+                                        Unsold (2nd Chance)
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Filter Summary */}
+                        <div className="mt-3 p-2 bg-accent/10 border-2 border-accent/20">
+                            <p className="font-mono text-xs text-muted">
+                                Showing: {playersToAuction.length} players
+                                {tierFilter !== 'all' && ` | Tier ${tierFilter}`}
+                                {roleFilter !== 'all' && ` | ${roleFilter}`}
+                                {showShortlistedOnly && ' | Shortlisted only'}
+                                {showUnsoldOnly && ' | Unsold with interest (2nd chance)'}
+                            </p>
+                        </div>
+                    </Card>
+
                     <div className="mb-4 p-3 md:p-3 lg:p-3 bg-accent/10 border-2 border-accent/20">
                         <p className="font-mono text-xs text-muted">
-                            📋 Showing: All Tier 1-3 players + Tier 4-5 players shortlisted by teams
+                            Showing: All Tier 1-3 players + Tier 4-5 players shortlisted by teams
                         </p>
                         <p className="font-mono text-xs text-muted mt-1">
                             {tier1to3Players.length} marquee players | {tier4to5WithInterest.length} shortlisted lower-tier
@@ -314,65 +439,76 @@ export default function AuctioneerControlPanel({
                         NEXT PLAYERS ({playersToAuction.length})
                     </h4>
                     <div className="grid md:grid-cols-2 gap-3 md:gap-3 lg:gap-3">
-                        {playersToAuction.slice(0, 6).map((player) => {
-                            const interestedCount = player.interestedTeams?.length || 0;
-                            const tierEmoji = ['🌟', '⭐', '✨', '💫', '🔹'][(player.marqueeSet || 5) - 1];
-                            
-                            return (
-                                <Card 
-                                    key={player.id} 
-                                    className={`p-3 md:p-4 ${player.isStarPlayer ? 'border-yellow-500 border-4 bg-yellow-500/10' : ''}`}
-                                >
-                                    <div className="flex items-start justify-between mb-2">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                {player.isStarPlayer && <span className="text-xl">⭐</span>}
-                                                <h5 className="font-mono font-bold">{player.name}</h5>
-                                                <span>{tierEmoji}</span>
-                                            </div>
-                                            {player.role && (
-                                                <Badge status="active">{player.role}</Badge>
-                                            )}
-                                            {interestedCount > 0 && (
-                                                <div className="mt-2 flex flex-wrap gap-1">
-                                                    {player.interestedTeams?.map((it) => (
-                                                        <span
-                                                            key={it.team.id}
-                                                            className="font-mono text-xs px-1 py-0.5"
-                                                            style={{ 
-                                                                color: it.team.color,
-                                                                border: `1px solid ${it.team.color}`,
-                                                            }}
-                                                        >
-                                                            {it.team.shortName}
-                                                        </span>
-                                                    ))}
+                        {playersToAuction.length > 0 ? (
+                            playersToAuction.map((player) => {
+                                const interestedCount = player.interestedTeams?.length || 0;
+                                const tierLabel = ['T1', 'T2', 'T3', 'T4', 'T5'][(player.marqueeSet || 5) - 1];
+                                
+                                return (
+                                    <Card 
+                                        key={player.id} 
+                                        className={`p-3 md:p-4 ${player.isStarPlayer ? 'border-yellow-500 border-4 bg-yellow-500/10' : ''}`}
+                                    >
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    {player.isStarPlayer && <Badge status="live" className="text-xs">STAR</Badge>}
+                                                    <h5 className="font-mono font-bold">{player.name}</h5>
+                                                    <Badge status="active" className="text-xs">{tierLabel}</Badge>
                                                 </div>
-                                            )}
+                                                {player.role && (
+                                                    <Badge status="active" className="mt-1">{player.role}</Badge>
+                                                )}
+                                                {interestedCount > 0 && (
+                                                    <div className="mt-2">
+                                                        <p className="font-mono text-xs text-accent mb-1">
+                                                            {interestedCount} Team{interestedCount > 1 ? 's' : ''} Interested
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {player.interestedTeams?.map((it) => (
+                                                                <span
+                                                                    key={it.team.id}
+                                                                    className="font-mono text-xs px-2 py-0.5 border-2"
+                                                                    style={{ 
+                                                                        borderColor: it.team.color,
+                                                                        color: it.team.color,
+                                                                    }}
+                                                                >
+                                                                    {it.team.shortName}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <Button
+                                                variant="primary"
+                                                onClick={() => handleStartPlayer(player.id)}
+                                                disabled={loading || !!currentPlayer}
+                                                className="text-xs md:text-sm px-2 md:px-3 py-1"
+                                            >
+                                                START
+                                            </Button>
                                         </div>
-                                        <Button
-                                            variant="primary"
-                                            onClick={() => handleStartPlayer(player.id)}
-                                            disabled={loading || !!currentPlayer}
-                                            className="text-xs md:text-sm px-2 md:px-3 py-1"
-                                        >
-                                            START
-                                        </Button>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="font-mono text-muted">Base:</span>
-                                        <span className="font-mono font-bold">
-                                            {Number(player.basePrice).toFixed(2)} {currency}
-                                        </span>
-                                    </div>
-                                </Card>
-                            );
-                        })}
+                                        <div className="flex justify-between text-sm">
+                                            <span className="font-mono text-muted">Base:</span>
+                                            <span className="font-mono font-bold">
+                                                {formatCurrency(player.basePrice)}
+                                            </span>
+                                        </div>
+                                    </Card>
+                                );
+                            })
+                        ) : (
+                            <div className="col-span-2 text-center py-8">
+                                <p className="font-mono text-muted">No players match the selected filters</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
-            {playersToAuction.length === 0 && !currentPlayer && (
+            {(tier1to3Players.length === 0 && tier4to5WithInterest.length === 0) && !currentPlayer && (
                 <div className="text-center py-12">
                     <p className="font-mono text-muted">All eligible players have been auctioned!</p>
                     {tier4to5Players.length > tier4to5WithInterest.length && (
