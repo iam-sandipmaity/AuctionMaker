@@ -85,7 +85,8 @@ export async function POST(request: NextRequest) {
         const validation = await validateBid(
             validatedData.auctionId,
             session.user.id,
-            validatedData.amount
+            validatedData.amount,
+            validatedData.playerId
         );
 
         if (!validation.valid) {
