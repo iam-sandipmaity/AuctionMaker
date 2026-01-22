@@ -57,12 +57,18 @@ h3 {
 .card {
   border: 3px solid var(--border);
   background: var(--background);
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .card:hover {
   transform: translate(-2px, -2px);
   box-shadow: 4px 4px 0 var(--accent);
+  border-color: var(--accent);
+}
+
+.card:active {
+  transform: translate(0, 0);
+  box-shadow: 2px 2px 0 var(--accent);
 }
 
 .btn {
@@ -79,16 +85,26 @@ h3 {
   position: relative;
 }
 
-.btn:hover {
+.btn:hover:not(:disabled) {
   background: var(--accent);
   color: var(--background);
   transform: translate(-2px, -2px);
   box-shadow: 4px 4px 0 var(--foreground);
 }
 
-.btn:active {
+.btn:active:not(:disabled) {
   transform: translate(0, 0);
   box-shadow: none;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .btn-primary {
@@ -97,9 +113,14 @@ h3 {
   border-color: var(--accent);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: var(--foreground);
   border-color: var(--foreground);
+}
+
+.btn-primary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }
 
 /* Input styling */
@@ -110,12 +131,18 @@ input, textarea {
   padding: 0.75rem 1rem;
   font-family: var(--font-mono);
   font-size: 1rem;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 input:focus, textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+input:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Animations */
@@ -138,12 +165,79 @@ input:focus, textarea:focus {
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .bid-flash {
   animation: bidFlash 0.5s ease-in-out;
 }
 
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Links */
+a {
+  transition: color 0.2s ease;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Smooth page transitions */
+main {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
 }
 
 /* Status badges */
@@ -188,10 +282,22 @@ input:focus, textarea:focus {
 ::-webkit-scrollbar-thumb {
   background: var(--accent);
   border: 2px solid var(--background);
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--foreground);
+  transform: scaleX(1.2);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent);
+  transform: scaleX(1.4);
+}
+
+/* Smooth scrolling behavior */
+* {
+  scroll-behavior: smooth;
 }
 
 /* Utility classes */
