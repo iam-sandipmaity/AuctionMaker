@@ -20,6 +20,15 @@ export default function AuctionCard({ auction }: AuctionCardProps) {
         ENDED: 'ended' as const,
     };
 
+    // Helper to format currency with denomination
+    const formatCurrency = (amount: number) => {
+        const num = amount.toFixed(2);
+        if (auction.budgetDenomination) {
+            return `${num} ${auction.budgetDenomination} ${auction.currency}`;
+        }
+        return `${num} ${auction.currency}`;
+    };
+
     return (
         <Link href={`/auction/${auction.id}`}>
             <Card className="h-full flex flex-col">
@@ -38,7 +47,7 @@ export default function AuctionCard({ auction }: AuctionCardProps) {
                     <div className="flex justify-between items-center border-t-3 border-border pt-3 md:pt-4">
                         <span className="font-mono text-xs md:text-sm text-muted">CURRENT BID</span>
                         <span className="font-mono text-xl md:text-2xl font-bold text-accent">
-                            ${currentPrice.toFixed(2)}
+                            {formatCurrency(currentPrice)}
                         </span>
                     </div>
 

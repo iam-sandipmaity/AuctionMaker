@@ -14,7 +14,7 @@ const createAuctionSchema = z.object({
     duration: z.number().positive(), // in minutes
     maxParticipants: z.number().positive().optional(),
     currency: z.string().default('USD'),
-    budgetDenomination: z.string().optional(),
+    budgetDenomination: z.string().min(1).optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
     imageUrl: z.string().url().optional(),
     // Team auction specific
     teamBudget: z.number().positive().optional(),
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
             endTime: endTime,
             maxParticipants: validatedData.maxParticipants,
             currency: validatedData.currency,
-            budgetDenomination: validatedData.budgetDenomination,
+            budgetDenomination: validatedData.budgetDenomination || null,
             imageUrl: validatedData.imageUrl,
             createdById: session.user.id,
         };
@@ -83,6 +83,16 @@ export async function POST(request: NextRequest) {
             auctionData.minSquadSize = validatedData.minSquadSize;
             auctionData.maxSquadSize = validatedData.maxSquadSize;
             auctionData.status = 'UPCOMING'; // Team auctions start in UPCOMING status
+            
+            // Ensure team auctions have a budget denomination
+            if (!auctionData.budgetDenomination) {
+                // Set default based on currency
+                if (validatedData.currency === 'INR') {
+                    auctionData.budgetDenomination = 'Crores';
+                } else {
+                    auctionData.budgetDenomination = 'Million';
+                }
+            }
         }
 
         const auction = await createAuction(auctionData);

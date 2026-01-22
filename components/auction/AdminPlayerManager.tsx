@@ -49,7 +49,7 @@ export default function AdminPlayerManager({
     // Helper to format currency with denomination
     const formatCurrency = (amount: number | string) => {
         const num = Number(amount).toFixed(2);
-        if (budgetDenomination) {
+        if (budgetDenomination && budgetDenomination.trim() !== '') {
             return `${num} ${budgetDenomination} ${currency}`;
         }
         return `${num} ${currency}`;

@@ -26,7 +26,7 @@ export default async function AuctionPage({ params }: AuctionPageProps) {
         startingPrice: parseFloat(auction.startingPrice.toString()),
         currentPrice: parseFloat(auction.currentPrice.toString()),
         minIncrement: parseFloat(auction.minIncrement.toString()),
-        budgetDenomination: auction.budgetDenomination ?? undefined,
+        budgetDenomination: auction.budgetDenomination || undefined,
         teamBudget: auction.teamBudget ? parseFloat(auction.teamBudget.toString()) : undefined,
         minSquadSize: auction.minSquadSize ?? undefined,
         maxSquadSize: auction.maxSquadSize ?? undefined,
