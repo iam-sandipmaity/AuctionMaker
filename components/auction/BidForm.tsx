@@ -127,14 +127,7 @@ export default function BidForm({
                 </Button>
             </form>
 
-            <div className="mt-4 pt-4 border-t-3 border-border">
-                <div className="flex justify-between">
-                    <span className="font-mono text-sm text-muted">YOUR WALLET</span>
-                    <span className="font-mono text-sm font-bold">
-                        ${parseFloat(session.user.wallet).toFixed(2)}
-                    </span>
-                </div>
-            </div>
+
         </div>
     );
 }
