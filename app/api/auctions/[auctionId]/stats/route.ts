@@ -18,6 +18,8 @@ export async function GET(
                 teamBudget: true,
                 minSquadSize: true,
                 maxSquadSize: true,
+                currency: true,
+                budgetDenomination: true,
             },
         });
 
@@ -226,6 +228,8 @@ export async function GET(
                     title: auction.title,
                     status: auction.status,
                     totalBudget: auction.teamBudget ? Number(auction.teamBudget) : 0,
+                    currency: auction.currency,
+                    budgetDenomination: auction.budgetDenomination,
                 },
                 overview: {
                     totalPlayers: allPlayers.length,
