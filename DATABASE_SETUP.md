@@ -28,11 +28,16 @@ I recommend using **Neon** - it's free, fast to set up, and perfect for developm
    - Copy this entire string
 
 4. **Update Your .env File**
-   - Open `f:\AuctionMaker\.env`
-   - Replace the DATABASE_URL line with your Neon connection string:
+   - Open or create `f:\AuctionMaker\.env`
+   - Add both DATABASE_URL and DIRECT_URL:
    ```env
-   DATABASE_URL="postgresql://your-neon-connection-string-here"
+   DATABASE_URL="postgresql://your-neon-connection-string-here?pgbouncer=true"
+   DIRECT_URL="postgresql://your-neon-connection-string-here"
+   NEXTAUTH_SECRET="generate-with-openssl-rand-base64-32"
+   NEXTAUTH_URL="http://localhost:3000"
    ```
+   
+   Note: Neon provides both pooled and direct connection URLs. Use the pooled URL for DATABASE_URL and direct URL for DIRECT_URL.
 
 5. **Push the Database Schema**
    - Open a new terminal in `f:\AuctionMaker`
@@ -65,7 +70,15 @@ I recommend using **Neon** - it's free, fast to set up, and perfect for developm
    - Replace `[YOUR-PASSWORD]` with your database password
 
 4. **Update .env and Push Schema**
-   - Same as steps 4-6 above
+   - Open or create `.env` file
+   - Add connection strings:
+   ```env
+   DATABASE_URL="your-supabase-pooled-connection-string"
+   DIRECT_URL="your-supabase-direct-connection-string"
+   NEXTAUTH_SECRET="generate-with-openssl-rand-base64-32"
+   NEXTAUTH_URL="http://localhost:3000"
+   ```
+   - Same as steps 5-6 for Neon
 
 ---
 
@@ -82,8 +95,35 @@ If you want to run PostgreSQL locally:
 6. Update .env:
    ```env
    DATABASE_URL="postgresql://postgres:your-password@localhost:5432/auction_db"
+   DIRECT_URL="postgresql://postgres:your-password@localhost:5432/auction_db"
+   NEXTAUTH_SECRET="generate-with-openssl-rand-base64-32"
+   NEXTAUTH_URL="http://localhost:3000"
    ```
 7. Run `npm run db:push`
+
+---
+
+## Database Schema Features
+
+The AuctionMaker database includes:
+
+### Core Models
+- **Users**: Authentication, preferred currency, team assignments
+- **Auctions**: Product and Team auctions with currency/denomination support
+- **Bids**: Bid tracking for both auction types
+- **Teams**: Team management with budgets and branding
+- **Players**: Player profiles with roles, marquee tiers, auction tracking
+- **PlayerInterests**: Team interest in specific players
+- **AuctionViews**: User viewing analytics
+
+### Key Features
+- **Multi-Currency**: USD, INR, EUR, GBP
+- **Flexible Denominations**: Crores, Lakhs, Million, Thousand
+- **Auction History**: Track which players have been auctioned
+- **Marquee Tiers**: 5-tier player classification system
+- **Star Players**: Admin can mark priority players
+- **Budget Tracking**: Real-time budget calculations
+- **Role-based Organization**: Player roles (Batsman, Bowler, etc.)
 
 ---
 
