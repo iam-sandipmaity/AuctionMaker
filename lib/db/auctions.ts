@@ -12,6 +12,7 @@ export async function createAuction(data: {
     endTime: Date;
     maxParticipants?: number;
     currency?: string;
+    budgetDenomination?: string;
     imageUrl?: string;
     createdById: string;
     status?: AuctionStatus;
@@ -30,6 +31,7 @@ export async function createAuction(data: {
         endTime: data.endTime,
         maxParticipants: data.maxParticipants,
         currency: data.currency || 'USD',
+        budgetDenomination: data.budgetDenomination || null,
         imageUrl: data.imageUrl,
         createdById: data.createdById,
         status: data.status || (data.startTime <= new Date() ? AuctionStatus.LIVE : AuctionStatus.UPCOMING),
