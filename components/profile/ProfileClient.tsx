@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { AuctionStatus } from '@prisma/client';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface Auction {
     id: string;
@@ -31,7 +32,7 @@ interface ProfileClientProps {
         name: string;
         username: string;
         email: string;
-        wallet: string;
+        preferredCurrency: string;
     };
     createdAuctions: Auction[];
     participatedAuctions: Auction[];
@@ -44,35 +45,35 @@ export default function ProfileClient({
     participatedAuctions,
     visitedAuctions,
 }: ProfileClientProps) {
+    const { showToast, showConfirm } = useToast();
     const [tab, setTab] = useState<'created' | 'participated' | 'visited'>('created');
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const router = useRouter();
 
     const handleDeleteAuction = async (auctionId: string) => {
-        if (!confirm('Are you sure you want to delete this auction? This will remove it for all participants and cannot be undone.')) {
-            return;
-        }
+        showConfirm('Are you sure you want to delete this auction? This will remove it for all participants and cannot be undone.', async () => {
+            setDeletingId(auctionId);
+            try {
+                const response = await fetch(`/api/auctions/${auctionId}`, {
+                    method: 'DELETE',
+                });
 
-        setDeletingId(auctionId);
-        try {
-            const response = await fetch(`/api/auctions/${auctionId}`, {
-                method: 'DELETE',
-            });
+                if (!response.ok) {
+                    const data = await response.json();
+                    showToast(data.error || 'Failed to delete auction', 'error');
+                    return;
+                }
 
-            if (!response.ok) {
-                const data = await response.json();
-                alert(data.error || 'Failed to delete auction');
-                return;
+                showToast('Auction deleted successfully', 'success');
+                // Refresh the page to update the list
+                router.refresh();
+            } catch (error) {
+                console.error('Error deleting auction:', error);
+                showToast('An error occurred while deleting the auction', 'error');
+            } finally {
+                setDeletingId(null);
             }
-
-            // Refresh the page to update the list
-            router.refresh();
-        } catch (error) {
-            console.error('Error deleting auction:', error);
-            alert('An error occurred while deleting the auction');
-        } finally {
-            setDeletingId(null);
-        }
+        });
     };
 
     const statusMap = {
@@ -136,7 +137,7 @@ export default function ProfileClient({
                         disabled={deletingId === auction.id}
                         className="text-sm md:text-base border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
                     >
-                        {deletingId === auction.id ? 'DELETING...' : '🗑️ DELETE'}
+                        {deletingId === auction.id ? 'DELETING...' : 'DELETE'}
                     </Button>
                 )}
             </div>
@@ -146,7 +147,7 @@ export default function ProfileClient({
     return (
         <div className="container section">
             {/* Profile Header */}
-            <div className="mb-8 md:mb-12 px-4 md:px-0">
+            <div className="mb-8 md:mb-12 px-4">
                 <h1 className="mb-4">MY PROFILE</h1>
                 <Card className="p-6 md:p-8">
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -156,9 +157,9 @@ export default function ProfileClient({
                             <p className="font-mono text-sm text-muted">{user.email}</p>
                         </div>
                         <div className="text-left md:text-right">
-                            <p className="font-mono text-sm text-muted mb-1">WALLET BALANCE</p>
-                            <p className="font-mono text-3xl md:text-4xl font-bold text-accent">
-                                ${parseFloat(user.wallet).toFixed(2)}
+                            <p className="font-mono text-sm text-muted mb-1">PREFERRED CURRENCY</p>
+                            <p className="font-mono text-2xl md:text-3xl font-bold text-accent">
+                                {user.preferredCurrency}
                             </p>
                         </div>
                     </div>
@@ -166,34 +167,34 @@ export default function ProfileClient({
             </div>
 
             {/* Tabs */}
-            <div className="mb-6 md:mb-8 px-4 md:px-0">
+            <div className="mb-6 md:mb-8 px-4">
                 <div className="flex gap-2 flex-wrap">
                     <Button
                         variant={tab === 'created' ? 'primary' : 'secondary'}
                         onClick={() => setTab('created')}
                         className="text-sm md:text-base px-4 md:px-6 py-2"
                     >
-                        📝 CREATED ({createdAuctions.length})
+                        CREATED ({createdAuctions.length})
                     </Button>
                     <Button
                         variant={tab === 'participated' ? 'primary' : 'secondary'}
                         onClick={() => setTab('participated')}
                         className="text-sm md:text-base px-4 md:px-6 py-2"
                     >
-                        🎯 PARTICIPATED ({participatedAuctions.length})
+                        PARTICIPATED ({participatedAuctions.length})
                     </Button>
                     <Button
                         variant={tab === 'visited' ? 'primary' : 'secondary'}
                         onClick={() => setTab('visited')}
                         className="text-sm md:text-base px-4 md:px-6 py-2"
                     >
-                        👁️ VISITED ({visitedAuctions.length})
+                        VISITED ({visitedAuctions.length})
                     </Button>
                 </div>
             </div>
 
             {/* Auction Lists */}
-            <div className="px-4 md:px-0">
+            <div className="px-4">
                 {tab === 'created' && (
                     <div className="space-y-4 md:space-y-6">
                         {createdAuctions.length === 0 ? (
