@@ -22,6 +22,8 @@ interface AuctionStats {
         title: string;
         status: string;
         totalBudget: number;
+        currency: string;
+        budgetDenomination?: string | null;
     };
     overview: {
         totalPlayers: number;
@@ -141,11 +143,18 @@ export default function AuctionStatsPage() {
     }, [auctionId]);
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0,
-        }).format(amount);
+        if (!stats?.auction) return `${amount}`;
+        
+        const { currency, budgetDenomination } = stats.auction;
+        const formattedNumber = amount.toLocaleString('en-US', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        });
+        
+        if (budgetDenomination) {
+            return `${formattedNumber} ${budgetDenomination} ${currency}`;
+        }
+        return `${formattedNumber} ${currency}`;
     };
 
     const normalizeRole = (role: string) => role.toUpperCase().trim();
