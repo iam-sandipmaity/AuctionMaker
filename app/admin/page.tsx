@@ -18,7 +18,8 @@ export default function AdminPage() {
         minIncrement: '',
         duration: '300', // default 5 hours for team auctions
         maxParticipants: '',
-        currency: 'Crores',
+        currency: 'USD',
+        budgetDenomination: 'Million',
         // Team auction specific
         teamBudget: '100',
         minSquadSize: '11',
@@ -50,6 +51,7 @@ export default function AdminPage() {
                 duration: parseInt(formData.duration),
                 maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : undefined,
                 currency: formData.currency,
+                budgetDenomination: formData.budgetDenomination,
             };
 
             // Add team auction specific fields
@@ -81,7 +83,8 @@ export default function AdminPage() {
                 minIncrement: '',
                 duration: '300',
                 maxParticipants: '',
-                currency: 'Crores',
+                currency: 'USD',
+                budgetDenomination: 'Million',
                 teamBudget: '100',
                 minSquadSize: '11',
                 maxSquadSize: '15',
@@ -111,14 +114,14 @@ export default function AdminPage() {
 
     return (
         <div className="container section">
-            <div className="mb-12">
+            <div className="mb-12 px-4">
                 <h1 className="mb-4">ADMIN PANEL</h1>
                 <p className="text-xl font-mono text-muted">
                     Create and manage auctions
                 </p>
             </div>
 
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto px-4">
                 <Card className="p-8">
                     <h2 className="mb-8">CREATE NEW AUCTION</h2>
 
@@ -185,23 +188,23 @@ export default function AdminPage() {
                                         onChange={(e) => setFormData({ ...formData, auctionType: e.target.value as 'PRODUCT' | 'TEAM' })}
                                         className="w-5 h-5"
                                     />
-                                    <span className="font-mono text-lg">IPL Style Team Auction</span>
+                                    <span className="font-mono text-lg">Team Auction</span>
                                 </label>
                             </div>
                             <p className="text-sm font-mono text-muted mt-2">
                                 {formData.auctionType === 'PRODUCT'
                                     ? 'Standard auction for products, items, or services'
-                                    : 'Team-based player auction like IPL - Admin acts as auctioneer, teams bid on players'}
+                                    : 'Team-based player auction - Admin acts as auctioneer, teams bid on players'}
                             </p>
                         </div>
 
                         {formData.auctionType === 'TEAM' && (
                             <div className="p-6 border-3 border-accent bg-accent/5 space-y-6">
-                                <h3 className="font-mono text-lg font-bold text-accent">IPL AUCTION SETTINGS</h3>
+                                <h3 className="font-mono text-lg font-bold text-accent">TEAM AUCTION SETTINGS</h3>
                                 
                                 <div className="grid md:grid-cols-2 gap-6">
                                     <Input
-                                        label="Team Budget (Crores)"
+                                        label="Team Budget"
                                         type="number"
                                         value={formData.teamBudget}
                                         onChange={(e) => setFormData({ ...formData, teamBudget: e.target.value })}
@@ -211,14 +214,42 @@ export default function AdminPage() {
                                         placeholder="100"
                                     />
 
-                                    <Input
-                                        label="Currency Name"
-                                        type="text"
+                                    <div>
+                                        <label className="font-mono text-sm uppercase tracking-wider mb-2 block">
+                                            Budget Denomination
+                                        </label>
+                                        <select
+                                            value={formData.budgetDenomination}
+                                            onChange={(e) => setFormData({ ...formData, budgetDenomination: e.target.value })}
+                                            className="w-full px-4 py-3 border-3 border-foreground bg-background text-foreground font-mono text-lg focus:outline-none focus:border-accent transition-colors"
+                                            required
+                                        >
+                                            <option value="Million">Million</option>
+                                            <option value="Crores">Crores</option>
+                                            <option value="Lakhs">Lakhs</option>
+                                            <option value="Thousand">Thousand</option>
+                                            <option value="Billion">Billion</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="font-mono text-sm uppercase tracking-wider mb-2 block">
+                                        Currency
+                                    </label>
+                                    <select
                                         value={formData.currency}
                                         onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                                        className="w-full px-4 py-3 border-3 border-foreground bg-background text-foreground font-mono text-lg focus:outline-none focus:border-accent transition-colors"
                                         required
-                                        placeholder="Crores"
-                                    />
+                                    >
+                                        <option value="USD">USD - US Dollar</option>
+                                        <option value="INR">INR - Indian Rupee</option>
+                                        <option value="EUR">EUR - Euro</option>
+                                        <option value="GBP">GBP - British Pound</option>
+                                        <option value="AUD">AUD - Australian Dollar</option>
+                                        <option value="CAD">CAD - Canadian Dollar</option>
+                                    </select>
                                 </div>
 
                                 <div className="grid md:grid-cols-2 gap-6">
