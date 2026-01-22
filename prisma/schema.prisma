@@ -12,15 +12,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  password     String
-  name         String
-  username     String   @unique
-  wallet       Decimal  @default(10000) @db.Decimal(10, 2)
-  totalBudget  Decimal  @default(10000) @db.Decimal(10, 2)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String   @id @default(cuid())
+  email             String   @unique
+  password          String
+  name              String
+  username          String   @unique
+  preferredCurrency String   @default("USD")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   teamId       String?
   team         Team?    @relation("TeamUsers", fields: [teamId], references: [id])
@@ -37,20 +36,21 @@ model Auction {
   id              String   @id @default(cuid())
   title           String
   description     String
-  auctionType     AuctionType @default(PRODUCT)
-  startingPrice   Decimal  @db.Decimal(10, 2)
-  currentPrice    Decimal  @db.Decimal(10, 2)
-  minIncrement    Decimal  @db.Decimal(10, 2)
-  startTime       DateTime
-  endTime         DateTime
-  status          AuctionStatus @default(UPCOMING)
-  maxParticipants Int?
-  currency        String   @default("USD")
-  imageUrl        String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  auctionType       AuctionType @default(PRODUCT)
+  startingPrice     Decimal  @db.Decimal(10, 2)
+  currentPrice      Decimal  @db.Decimal(10, 2)
+  minIncrement      Decimal  @db.Decimal(10, 2)
+  startTime         DateTime
+  endTime           DateTime
+  status            AuctionStatus @default(UPCOMING)
+  maxParticipants   Int?
+  currency          String   @default("USD")
+  budgetDenomination String? // e.g., "Million", "Crores", "Lakhs"
+  imageUrl          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  // IPL Auction specific fields
+  // Team Auction specific fields
   teamBudget      Decimal?  @db.Decimal(10, 2) // Budget for each team
   minSquadSize    Int?      // Minimum players each team must buy
   maxSquadSize    Int?      // Maximum players each team can buy
@@ -130,6 +130,7 @@ model Player {
   avatarUrl   String?  // Player avatar/photo URL
   marqueeSet  Int?     // Marquee tier (1-5: 1=top tier, 5=low tier)
   isStarPlayer Boolean @default(false) // Admin marked as priority player
+  hasBeenAuctioned Boolean @default(false) // Has this player been put up for auction at least once?
   auctionId   String
   auction     Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   teamId      String?
