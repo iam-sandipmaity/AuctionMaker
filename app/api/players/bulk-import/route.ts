@@ -190,8 +190,31 @@ function parseCSV(content: string): PlayerImportData[] {
         throw new Error('CSV file must contain headers and at least one data row');
     }
 
+    // Helper function to parse CSV line respecting quotes
+    const parseCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+        
+        return result.map(val => val.replace(/^"|"$/g, '').trim());
+    };
+
     // Parse headers
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
     
     // Map headers to expected fields
     const headerMap: Record<string, string> = {
@@ -230,14 +253,20 @@ function parseCSV(content: string): PlayerImportData[] {
         const line = lines[i].trim();
         if (!line) continue;
 
-        const values = line.split(',').map(v => v.trim());
+        const values = parseCSVLine(line);
         const player: any = {};
 
         headers.forEach((header, index) => {
             const field = headerMap[header];
-            if (field && values[index]) {
+            if (field && values[index] && values[index] !== '') {
                 if (field === 'basePrice' || field === 'marqueeSet') {
-                    player[field] = parseFloat(values[index]) || 0;
+                    // Handle both decimal point and comma as decimal separator
+                    const numValue = values[index].replace(',', '.');
+                    const parsed = parseFloat(numValue);
+                    if (isNaN(parsed)) {
+                        throw new Error(`Invalid number format for ${field} at row ${i + 1}: "${values[index]}". Use decimal point (e.g., 2.5) for decimal values.`);
+                    }
+                    player[field] = parsed;
                 } else if (field === 'isStarPlayer') {
                     const val = values[index].toLowerCase();
                     player[field] = val === 'true' || val === 'yes' || val === '1';
