@@ -2,7 +2,8 @@ import { getAuctions } from '@/lib/db/auctions';
 import AuctionCard from '@/components/auction/AuctionCard';
 import { AuctionStatus } from '@prisma/client';
 
-export const dynamic = 'force-dynamic';
+// Revalidate every 60 seconds for auction listings
+export const revalidate = 60;
 
 export default async function AuctionPage() {
     const auctions = await getAuctions();
