@@ -1,16 +1,14 @@
 import prisma from './prisma';
 import bcrypt from 'bcryptjs';
-import { Decimal } from '@prisma/client/runtime/library';
 
 export async function createUser(data: {
     email: string;
     password: string;
     name: string;
     username: string;
-    initialBudget?: number;
+    preferredCurrency?: string;
 }) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const budget = data.initialBudget || 10000;
 
     return prisma.user.create({
         data: {
@@ -18,8 +16,7 @@ export async function createUser(data: {
             password: hashedPassword,
             name: data.name,
             username: data.username,
-            wallet: new Decimal(budget),
-            totalBudget: new Decimal(budget),
+            preferredCurrency: data.preferredCurrency || 'USD',
         },
     });
 }
@@ -38,18 +35,10 @@ export async function getUserById(id: string) {
             email: true,
             name: true,
             username: true,
-            wallet: true,
-            totalBudget: true,
+            preferredCurrency: true,
             createdAt: true,
             updatedAt: true,
         },
-    });
-}
-
-export async function updateUserWallet(userId: string, amount: Decimal) {
-    return prisma.user.update({
-        where: { id: userId },
-        data: { wallet: amount },
     });
 }
 
