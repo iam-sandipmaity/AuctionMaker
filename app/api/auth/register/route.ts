@@ -7,7 +7,7 @@ const registerSchema = z.object({
     password: z.string().min(6),
     name: z.string().min(1),
     username: z.string().min(3),
-    initialBudget: z.number().min(100).optional(),
+    preferredCurrency: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
