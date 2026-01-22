@@ -46,11 +46,8 @@ export default function Header() {
                                     CREATE AUCTION
                                 </Link>
                                 <div className="flex items-center gap-3 lg:gap-4 pl-3 lg:pl-4 border-l-3 border-border">
-                                    <div className="text-right">
-                                        <div className="font-mono text-xs text-muted">@{session.user.username}</div>
-                                        <div className="font-mono text-sm lg:text-lg font-bold text-accent">
-                                            ${parseFloat(session.user.wallet).toFixed(2)}
-                                        </div>
+                                    <div className="font-mono text-sm lg:text-base font-bold">
+                                        @{session.user.username}
                                     </div>
                                     <Button variant="ghost" onClick={() => signOut()} className="text-sm lg:text-base px-3 lg:px-4 py-2">
                                         LOGOUT
@@ -73,14 +70,6 @@ export default function Header() {
                 {/* Mobile Navigation */}
                 {mobileMenuOpen && (
                     <nav className="md:hidden border-t-3 border-border py-4 space-y-4">
-                        <Link 
-                            href="/auction" 
-                            className="block font-grotesk font-bold hover:text-accent transition-colors py-2"
-                            onClick={() => setMobileMenuOpen(false)}
-                        >
-                            AUCTIONS
-                        </Link>
-
                         {session ? (
                             <>
                                 <Link 
@@ -105,12 +94,7 @@ export default function Header() {
                                     CREATE AUCTION
                                 </Link>
                                 <div className="border-t-3 border-border pt-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-mono text-sm text-muted">@{session.user.username}</span>
-                                        <span className="font-mono text-lg font-bold text-accent">
-                                            ${parseFloat(session.user.wallet).toFixed(2)}
-                                        </span>
-                                    </div>
+                                    <div className="font-mono text-sm">@{session.user.username}</div>
                                     <Button 
                                         variant="ghost" 
                                         onClick={() => {
@@ -124,14 +108,23 @@ export default function Header() {
                                 </div>
                             </>
                         ) : (
-                            <div className="flex flex-col gap-2">
-                                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                                    <Button variant="secondary" className="w-full">LOGIN</Button>
+                            <>
+                                <Link 
+                                    href="/auction" 
+                                    className="block font-grotesk font-bold hover:text-accent transition-colors py-2"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    AUCTIONS
                                 </Link>
-                                <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
-                                    <Button variant="primary" className="w-full">REGISTER</Button>
-                                </Link>
-                            </div>
+                                <div className="flex flex-col gap-2">
+                                    <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                                        <Button variant="secondary" className="w-full">LOGIN</Button>
+                                    </Link>
+                                    <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
+                                        <Button variant="primary" className="w-full">REGISTER</Button>
+                                    </Link>
+                                </div>
+                            </>
                         )}
                     </nav>
                 )}
