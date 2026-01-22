@@ -18,8 +18,13 @@ export default function Home() {
                     WebSocket updates. Complete control. Multiple concurrent participants.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 mb-6 md:mb-7 lg:mb-8 w-full sm:w-auto px-4">
-                    <Link href="/auction" className="w-full sm:w-auto">
+                    <Link href="/admin" className="w-full sm:w-auto">
                         <Button variant="primary" className="text-lg md:text-xl px-8 md:px-10 lg:px-12 py-4 md:py-5 lg:py-6 w-full sm:w-auto">
+                            CREATE AUCTION →
+                        </Button>
+                    </Link>
+                    <Link href="/auction" className="w-full sm:w-auto">
+                        <Button variant="secondary" className="text-lg md:text-xl px-8 md:px-10 lg:px-12 py-4 md:py-5 lg:py-6 w-full sm:w-auto">
                             ENTER AUCTIONS →
                         </Button>
                     </Link>
@@ -35,30 +40,30 @@ export default function Home() {
 
                 <div className="grid md:grid-cols-2 gap-5 md:gap-6 lg:gap-8 mb-10 md:mb-12 lg:mb-16 px-4 lg:px-0">
                     <div className="card p-6 md:p-7 lg:p-8 border-accent">
-                        <div className="font-mono text-accent text-2xl md:text-3xl lg:text-4xl font-bold mb-4">🏏 IPL-STYLE TEAM AUCTION</div>
+                        <div className="font-mono text-accent text-2xl md:text-3xl lg:text-4xl font-bold mb-4">IPL-STYLE TEAM AUCTION</div>
                         <p className="text-muted font-mono mb-6">
                             Team-based player auction like IPL. Admin acts as auctioneer, multiple teams bid on players.
                         </p>
                         <ul className="space-y-3 font-mono text-sm">
-                            <li>▸ Team budgets (e.g., 100 Crores per team)</li>
-                            <li>▸ Squad size limits (Min: 11, Max: 15)</li>
-                            <li>▸ Player roles & categories</li>
-                            <li>▸ Real-time budget tracking</li>
-                            <li>▸ Player shortlisting</li>
+                            <li>[+] Team budgets (e.g., 100 Crores per team)</li>
+                            <li>[+] Squad size limits (Min: 11, Max: 15)</li>
+                            <li>[+] Player roles & categories</li>
+                            <li>[+] Real-time budget tracking</li>
+                            <li>[+] Player shortlisting</li>
                         </ul>
                     </div>
 
                     <div className="card p-6 md:p-7 lg:p-8">
-                        <div className="font-mono text-accent text-2xl md:text-3xl lg:text-4xl font-bold mb-4">🛍️ PRODUCT AUCTION</div>
+                        <div className="font-mono text-accent text-2xl md:text-3xl lg:text-4xl font-bold mb-4">PRODUCT AUCTION</div>
                         <p className="text-muted font-mono mb-6">
                             Standard auction for products, items, or services. Traditional bidding with starting price and increments.
                         </p>
                         <ul className="space-y-3 font-mono text-sm">
-                            <li>▸ Customizable starting price</li>
-                            <li>▸ Set minimum bid increments</li>
-                            <li>▸ Duration-based or manual close</li>
-                            <li>▸ Unlimited participants</li>
-                            <li>▸ Live bid updates</li>
+                            <li>[+] Customizable starting price</li>
+                            <li>[+] Set minimum bid increments</li>
+                            <li>[+] Duration-based or manual close</li>
+                            <li>[+] Unlimited participants</li>
+                            <li>[+] Live bid updates</li>
                         </ul>
                     </div>
                 </div>
@@ -112,7 +117,7 @@ export default function Home() {
                             { title: 'Role-based Access Control', desc: 'Admin, auctioneer, team member, and participant roles with granular permissions' },
                         ].map((feature, index) => (
                             <div key={index} className="flex items-start gap-3 md:gap-4 border-l-3 md:border-l-5 border-accent pl-4 md:pl-6 py-2">
-                                <span className="font-mono text-accent font-bold text-sm md:text-base">▸</span>
+                                <span className="font-mono text-accent font-bold text-sm md:text-base">[+]</span>
                                 <div className="flex flex-col">
                                     <span className="font-mono text-base md:text-lg font-bold">{feature.title}</span>
                                     <span className="font-mono text-xs md:text-sm text-muted">{feature.desc}</span>
