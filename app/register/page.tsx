@@ -15,7 +15,7 @@ export default function RegisterPage() {
         email: '',
         password: '',
         confirmPassword: '',
-        initialBudget: '10000',
+        preferredCurrency: 'USD',
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -45,7 +45,7 @@ export default function RegisterPage() {
                     username: formData.username,
                     email: formData.email,
                     password: formData.password,
-                    initialBudget: parseFloat(formData.initialBudget),
+                    preferredCurrency: formData.preferredCurrency,
                 }),
             });
 
@@ -121,15 +121,24 @@ export default function RegisterPage() {
                         placeholder="••••••••"
                     />
 
-                    <Input
-                        label="Initial Budget (USD)"
-                        type="number"
-                        value={formData.initialBudget}
-                        onChange={(e) => setFormData({ ...formData, initialBudget: e.target.value })}
-                        required
-                        min="100"
-                        step="100"
-                    />
+                    <div>
+                        <label className="font-mono text-sm uppercase tracking-wider mb-2 block">
+                            Preferred Currency
+                        </label>
+                        <select
+                            value={formData.preferredCurrency}
+                            onChange={(e) => setFormData({ ...formData, preferredCurrency: e.target.value })}
+                            className="w-full px-4 py-3 border-3 border-foreground bg-background text-foreground font-mono text-lg focus:outline-none focus:border-accent transition-colors"
+                            required
+                        >
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="INR">INR - Indian Rupee</option>
+                            <option value="EUR">EUR - Euro</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="AUD">AUD - Australian Dollar</option>
+                            <option value="CAD">CAD - Canadian Dollar</option>
+                        </select>
+                    </div>
 
                     <Button
                         type="submit"
