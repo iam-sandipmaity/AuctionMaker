@@ -83,6 +83,8 @@ export default function AuctioneerControlPanel({
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [showShortlistedOnly, setShowShortlistedOnly] = useState(false);
     const [showUnsoldOnly, setShowUnsoldOnly] = useState(false);
+    const [randomSelection, setRandomSelection] = useState(false);
+    const [randomPlayerId, setRandomPlayerId] = useState<string | null>(null);
 
     const unsoldPlayers = players.filter(p => p.status === 'UNSOLD' && !p.isCurrentlyAuctioning);
     
@@ -127,6 +129,23 @@ export default function AuctioneerControlPanel({
         return tierA - tierB;
     });
 
+    // Apply random selection filter
+    if (randomSelection && playersToAuction.length > 0) {
+        // If no random player selected yet, or the current random player is no longer in the list, pick a new one
+        if (!randomPlayerId || !playersToAuction.find(p => p.id === randomPlayerId)) {
+            const randomIndex = Math.floor(Math.random() * playersToAuction.length);
+            const newRandomPlayer = playersToAuction[randomIndex];
+            setRandomPlayerId(newRandomPlayer.id);
+            playersToAuction = [newRandomPlayer];
+        } else {
+            // Keep showing the same random player
+            playersToAuction = playersToAuction.filter(p => p.id === randomPlayerId);
+        }
+    } else if (!randomSelection) {
+        // Reset random player when random selection is turned off
+        setRandomPlayerId(null);
+    }
+
     // Get unique roles for filter
     const availableRoles = Array.from(new Set(unsoldPlayers.map(p => p.role).filter(Boolean))) as string[];
 
@@ -152,6 +171,11 @@ export default function AuctioneerControlPanel({
             if (!response.ok) {
                 setError(data.error || 'Failed to start player auction');
                 return;
+            }
+
+            // If in random mode and player was started, reset randomPlayerId so a new one gets picked next time
+            if (randomSelection) {
+                setRandomPlayerId(null);
             }
 
             // Data updates via socket event (player:auction:start), no need to refresh
@@ -346,7 +370,7 @@ export default function AuctioneerControlPanel({
                     {/* Filter Controls */}
                     <Card className="p-4 mb-4">
                         <h4 className="font-mono text-sm font-bold mb-3">FILTERS</h4>
-                        <div className="grid md:grid-cols-4 gap-3">
+                        <div className="grid md:grid-cols-5 gap-3">
                             {/* Tier Filter */}
                             <div>
                                 <label className="font-mono text-xs uppercase tracking-wider mb-2 block">
@@ -412,6 +436,21 @@ export default function AuctioneerControlPanel({
                                     </span>
                                 </label>
                             </div>
+
+                            {/* Random Selection Checkbox */}
+                            <div className="flex items-end">
+                                <label className="flex items-center gap-2 cursor-pointer p-2 border-3 border-accent bg-accent/5 hover:border-accent hover:bg-accent/10 transition-colors w-full">
+                                    <input
+                                        type="checkbox"
+                                        checked={randomSelection}
+                                        onChange={(e) => setRandomSelection(e.target.checked)}
+                                        className="w-4 h-4"
+                                    />
+                                    <span className="font-mono text-xs uppercase text-accent font-bold">
+                                        Random Selection
+                                    </span>
+                                </label>
+                            </div>
                         </div>
 
                         {/* Filter Summary */}
@@ -422,6 +461,7 @@ export default function AuctioneerControlPanel({
                                 {roleFilter !== 'all' && ` | ${roleFilter}`}
                                 {showShortlistedOnly && ' | Shortlisted only'}
                                 {showUnsoldOnly && ' | Unsold with interest (2nd chance)'}
+                                {randomSelection && ' | Random selection mode'}
                             </p>
                         </div>
                     </Card>
