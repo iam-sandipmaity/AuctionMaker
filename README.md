@@ -2,6 +2,24 @@
 
 A fully customizable, real-time multi-user auction bidding platform supporting both traditional product auctions and IPL-style team player auctions. Built with Next.js, PostgreSQL, and a retro brutalist design aesthetic.
 
+## ✨ Latest Updates (January 23, 2026)
+
+### 🎨 Advanced Analytics Dashboard
+- **15+ Analytics Sections** with comprehensive insights
+- **Interactive Visual Charts**: Heatmaps, stacked bars, circular progress rings
+- **Smart Insights**: Auto-generated top insights and risk analysis
+- **Performance Grading**: A-F scorecard for each team
+- **Value Analysis**: Best bargains and premium acquisitions identification
+- **Completion Forecasting**: Predict squad completion feasibility
+- **Budget-Percentage Ranges**: Smart price categorization (< 5%, 5-10%, 10-15%, 15%+)
+
+### 🎯 UI/UX Enhancements
+- **Custom Brutalist Favicon**: Auction gavel design
+- **How It Works Guide**: Interactive walkthrough for all user roles
+- **Improved Color Contrast**: Better readability throughout
+- **Random Player Selection**: Fair player picking in auctioneer panel
+- **Responsive Charts**: All visualizations work on mobile/tablet/desktop
+
 ## Features
 
 ### General Features
@@ -14,11 +32,13 @@ A fully customizable, real-time multi-user auction bidding platform supporting b
 - 🎨 **Brutalist design** with retro terminal aesthetic
 - 📱 **Fully responsive** - Mobile, Tablet, Desktop optimized
 - 🛠️ **Admin dashboard** for auction creation
-- 📊 **Advanced analytics** with comprehensive auction insights
-- 📤 **Export functionality** - Download stats as PDF/Excel
+- 📊 **Advanced analytics** with 15+ visualization sections
+- 📈 **Interactive charts** - Heatmaps, rings, stacked bars
+- 📤 **Export functionality** - Download stats as PDF/PNG
 - 🔔 **Toast notifications** for real-time feedback
 - 🚀 **Performance optimized** with ISR caching and lazy loading
 - 🛡️ **Error boundaries** for graceful error handling
+- 🎯 **Smart insights** - Auto-generated analytics and risk alerts
 
 ### IPL-Style Team Auctions
 - 🏏 **Team-based bidding** - Multiple teams compete for players
@@ -196,14 +216,30 @@ AuctionMaker/
 7. **Start Auction**: Begin when teams are ready
 8. **Run Auction**: 
    - Select player to auction from pool
-   - Filter by marquee tier, role, or auction status
+   - Filter by marquee tier, role, auction status, or use random selection
    - Teams bid in real-time with denomination display
    - Mark player as sold/unsold
    - Track spending and squad composition
-   - View live analytics
-9. **Export Results**: Download comprehensive reports
+   - View live analytics with interactive charts
+   - Monitor risk indicators and completion forecasts
+9. **View Analytics**: 
+   - Access comprehensive stats dashboard
+   - Review 15+ analytics sections with visualizations
+   - Export insights as PDF/PNG
+   - Check team performance scorecards
+   - Analyze spending patterns and value acquisitions
+10. **Export Results**: Download comprehensive reports
 
 For detailed step-by-step guide, see [IPL_AUCTION_QUICKSTART.md](IPL_AUCTION_QUICKSTART.md)
+
+### Using the How It Works Guide
+
+1. Click "HOW IT WORKS" in the navigation
+2. Learn about three user roles:
+   - **Admin**: Create auctions, manage teams, control bidding
+   - **Participant**: Join teams, place bids, build squads
+   - **Spectator**: Watch live auctions, view real-time updates
+3. Interactive cards with expandable details for each role
 
 ### Joining an Auction
 
