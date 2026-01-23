@@ -7,6 +7,15 @@
 - Server is running (`npm run dev`)
 - You have admin access (registered user)
 
+### New Features (January 23, 2026)
+- ✨ **Advanced Analytics Dashboard** with 15+ visualization sections
+- 📊 **Interactive Charts**: Heatmaps, stacked bars, budget utilization rings
+- 🎯 **Random Player Selection** for fair picks
+- 📈 **Performance Scorecards** with A-F grading
+- ⚠️ **Risk Alerts** and completion forecasts
+- 💡 **Smart Insights** auto-generation
+- 🎨 **Improved UI** with better color contrast
+
 ## Step-by-Step Guide for Admin
 
 ### 1. Create IPL Auction
@@ -17,7 +26,8 @@
    - **Description**: "Annual player auction for IPL teams"
    - **Auction Type**: Select "IPL Style Team Auction"
    - **Team Budget**: 100 (Crores)
-   - **Currency**: Crores
+   - **Currency**: INR
+   - **Budget Denomination**: Crores
    - **Min Squad Size**: 11
    - **Max Squad Size**: 15
    - **Base Price**: 0.20 (default starting bid)
@@ -171,11 +181,33 @@ Once auction is LIVE:
 
 ### 4. Strategy Tips
 
-- **Budget Management**: Don't overspend early
-- **Squad Balance**: Need players across all roles
+- **Budget Management**: Don't overspend early - check analytics dashboard
+- **Squad Balance**: Need players across all roles - monitor balance scorecard
 - **Quick Bidding**: React fast to player you want
-- **Watch Competitors**: Track other teams' budgets
-- **Min Squad Size**: Must acquire at least 11 players
+- **Watch Competitors**: Track other teams' budgets and risk indicators
+- **Min Squad Size**: Must acquire at least 11 players - use completion forecast
+- **Value Hunting**: Check "Value Analysis" section for bargain opportunities
+- **Risk Monitoring**: Watch for budget crisis alerts in Risk Dashboard
+- **Performance Tracking**: Review your team's grade in Performance Scorecard
+
+### 5. Analytics & Insights
+
+Access comprehensive analytics during and after auction:
+
+1. **Click "ANALYTICS" tab** to view:
+   - Top Insights Summary with key takeaways
+   - Team Spending Heatmap (role-wise intensity)
+   - Budget Utilization Rings
+   - Risk & Opportunity Dashboard
+   - Completion Forecast
+   - Performance Scorecard (A-F grades)
+   - Value Analysis (bargains vs premium buys)
+   - 10+ more visualization sections
+
+2. **Export Options**:
+   - Export as PNG for presentations
+   - Export as PDF for reports
+   - Share insights with team management
 
 ## Common Scenarios
 
