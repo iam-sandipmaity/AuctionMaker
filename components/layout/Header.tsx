@@ -36,6 +36,9 @@ export default function Header() {
                         <Link href="/auction" className="font-grotesk text-sm lg:text-base font-bold hover:text-accent transition-colors whitespace-nowrap">
                             AUCTIONS
                         </Link>
+                        <Link href="/how-it-works" className="font-grotesk text-sm lg:text-base font-bold hover:text-accent transition-colors whitespace-nowrap">
+                            HOW IT WORKS
+                        </Link>
 
                         {session ? (
                             <>
@@ -80,6 +83,13 @@ export default function Header() {
                                     AUCTIONS
                                 </Link>
                                 <Link 
+                                    href="/how-it-works" 
+                                    className="block font-grotesk font-bold hover:text-accent transition-colors py-2"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    HOW IT WORKS
+                                </Link>
+                                <Link 
                                     href="/profile" 
                                     className="block font-grotesk font-bold hover:text-accent transition-colors py-2"
                                     onClick={() => setMobileMenuOpen(false)}
@@ -115,6 +125,13 @@ export default function Header() {
                                     onClick={() => setMobileMenuOpen(false)}
                                 >
                                     AUCTIONS
+                                </Link>
+                                <Link 
+                                    href="/how-it-works" 
+                                    className="block font-grotesk font-bold hover:text-accent transition-colors py-2"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    HOW IT WORKS
                                 </Link>
                                 <div className="flex flex-col gap-2">
                                     <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
