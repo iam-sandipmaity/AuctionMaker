@@ -1,0 +1,21 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" fill="#0a0a0a"/>
+  
+  <!-- Brutalist border -->
+  <rect x="4" y="4" width="120" height="120" stroke="#00ff88" stroke-width="3" fill="none"/>
+  
+  <!-- Auction Gavel - Bold geometric style -->
+  <!-- Gavel head -->
+  <rect x="55" y="35" width="35" height="15" fill="#00ff88" transform="rotate(45 55 35)"/>
+  
+  <!-- Gavel handle -->
+  <rect x="45" y="55" width="8" height="45" fill="#00ff88" transform="rotate(45 45 55)"/>
+  
+  <!-- Strike block -->
+  <rect x="70" y="85" width="25" height="8" rx="1" fill="#00ff88"/>
+  
+  <!-- Accent lines for impact -->
+  <line x1="90" y1="78" x2="100" y2="68" stroke="#00ff88" stroke-width="3" stroke-linecap="square"/>
+  <line x1="95" y1="83" x2="105" y2="73" stroke="#00ff88" stroke-width="3" stroke-linecap="square"/>
+  <line x1="100" y1="88" x2="110" y2="78" stroke="#00ff88" stroke-width="3" stroke-linecap="square"/>
+</svg>

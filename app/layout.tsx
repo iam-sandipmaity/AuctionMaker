@@ -29,6 +29,13 @@ const inter = Inter({
 export const metadata: Metadata = {
     title: "AuctionMaker - Real-Time Bidding Platform",
     description: "A fully customizable, real-time multi-user auction bidding platform",
+    icons: {
+        icon: [
+            { url: '/favicon.ico', sizes: 'any' },
+            { url: '/favicon.svg', type: 'image/svg+xml' }
+        ],
+        apple: '/apple-icon.svg',
+    },
 };
 
 export default async function RootLayout({
