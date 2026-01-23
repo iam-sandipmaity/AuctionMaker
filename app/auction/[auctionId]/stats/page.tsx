@@ -412,6 +412,126 @@ export default function AuctionStatsPage() {
                     </div>
                 </div>
 
+                {/* Top Insights Summary */}
+                <div className="card p-6 mb-10 border-[var(--accent)] bg-[#0a0a0a]">
+                    <h2 className="text-xl font-[var(--font-grotesk)] font-bold text-[var(--accent)] mb-4 uppercase">💡 Key Insights</h2>
+                    <div className="space-y-3">
+                        {/* Best Value Team */}
+                        {(() => {
+                            const teamWithBestValue = teamStats
+                                .map(team => {
+                                    const teamPlayers = allPlayers.filter(p => p.teamId === team.id && p.soldPrice);
+                                    const avgSavings = teamPlayers.reduce((sum, p) => {
+                                        const roleAvg = overview.avgPriceByRole[normalizeRole(p.role)] || 0;
+                                        const savings = roleAvg - (p.soldPrice || 0);
+                                        return sum + (roleAvg > 0 ? (savings / roleAvg) * 100 : 0);
+                                    }, 0) / (teamPlayers.length || 1);
+                                    return { team, avgSavings, playerCount: teamPlayers.length };
+                                })
+                                .filter(t => t.playerCount > 0)
+                                .sort((a, b) => b.avgSavings - a.avgSavings)[0];
+                            
+                            return teamWithBestValue && teamWithBestValue.avgSavings > 5 ? (
+                                <div className="flex items-start gap-3">
+                                    <div className="text-[var(--accent)] text-2xl">▸</div>
+                                    <div className="flex-1">
+                                        <span className="font-mono text-[var(--foreground)]">
+                                            <span className="font-bold" style={{ color: teamWithBestValue.team.color }}>
+                                                {teamWithBestValue.team.name}
+                                            </span>
+                                            {' '}is getting the <span className="text-[var(--accent)] font-bold">best value</span> - averaging{' '}
+                                            <span className="text-[var(--accent)] font-bold">{teamWithBestValue.avgSavings.toFixed(0)}%</span> below market rates
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : null;
+                        })()}
+                        
+                        {/* Risk Alert */}
+                        {(() => {
+                            const atRiskTeams = teamStats.filter(team => {
+                                const avgNeeded = team.slotsRemaining > 0 ? team.remainingBudget / team.slotsRemaining : 0;
+                                const minNeeded = team.playersNeeded;
+                                return minNeeded > 0 && (team.remainingBudget < minNeeded * overview.averagePlayerPrice * 0.5);
+                            });
+                            
+                            return atRiskTeams.length > 0 ? (
+                                <div className="flex items-start gap-3">
+                                    <div className="text-red-500 text-2xl">⚠</div>
+                                    <div className="flex-1">
+                                        <span className="font-mono text-[var(--foreground)]">
+                                            <span className="font-bold text-red-400">Risk Alert:</span>
+                                            {' '}{atRiskTeams.map(t => t.name).join(', ')} may struggle to complete minimum squad with remaining budget
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : null;
+                        })()}
+                        
+                        {/* Most Contested Role */}
+                        {(() => {
+                            const roleCompetition = Object.entries(overview.avgPriceByRole)
+                                .sort((a, b) => b[1] - a[1])[0];
+                            
+                            return roleCompetition && roleCompetition[1] > 0 ? (
+                                <div className="flex items-start gap-3">
+                                    <div className="text-[var(--accent)] text-2xl">▸</div>
+                                    <div className="flex-1">
+                                        <span className="font-mono text-[var(--foreground)]">
+                                            <span className="text-[var(--accent)] font-bold">{roleCompetition[0]}</span> is the most contested role with average price of{' '}
+                                            <span className="font-bold">{formatCurrency(roleCompetition[1])}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : null;
+                        })()}
+                        
+                        {/* Completion Status */}
+                        {(() => {
+                            const completedTeams = teamStats.filter(t => t.squadSize >= t.minRequired).length;
+                            const totalTeams = teamStats.length;
+                            
+                            return (
+                                <div className="flex items-start gap-3">
+                                    <div className="text-[var(--accent)] text-2xl">▸</div>
+                                    <div className="flex-1">
+                                        <span className="font-mono text-[var(--foreground)]">
+                                            <span className="text-[var(--accent)] font-bold">{completedTeams} of {totalTeams}</span> teams have completed their minimum squad requirements
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                        
+                        {/* Budget Efficiency Leader */}
+                        {(() => {
+                            const mostEfficient = teamStats
+                                .filter(t => t.squadSize > 0)
+                                .map(t => ({
+                                    team: t,
+                                    efficiency: t.squadSize > 0 && t.moneySpent > 0
+                                        ? ((t.squadSize / t.maxAllowed) / (t.moneySpent / t.totalBudget)) * 100
+                                        : 0
+                                }))
+                                .sort((a, b) => b.efficiency - a.efficiency)[0];
+                            
+                            return mostEfficient && mostEfficient.efficiency > 0 ? (
+                                <div className="flex items-start gap-3">
+                                    <div className="text-[var(--accent)] text-2xl">▸</div>
+                                    <div className="flex-1">
+                                        <span className="font-mono text-[var(--foreground)]">
+                                            <span className="font-bold" style={{ color: mostEfficient.team.color }}>
+                                                {mostEfficient.team.name}
+                                            </span>
+                                            {' '}leads in <span className="text-[var(--accent)] font-bold">spending efficiency</span> - maximizing squad size vs budget used
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : null;
+                        })()}
+                    </div>
+                </div>
+
                 {/* Overview Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                     <div className="card p-6 hover:border-[var(--accent)] transition-colors">
@@ -483,6 +603,185 @@ export default function AuctionStatsPage() {
                             </div>
                             <div className="text-xs font-mono text-gray-300">Market Activity Index</div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Risk & Opportunity Dashboard */}
+                <div className="card p-6 mb-10 border-[var(--accent)]">
+                    <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6 border-l-4 border-[var(--accent)] pl-4">RISK & OPPORTUNITY DASHBOARD</h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {teamStats.map(team => {
+                            const avgNeededPerSlot = team.slotsRemaining > 0 ? team.remainingBudget / team.slotsRemaining : 0;
+                            const canCompleteSquad = team.playersNeeded === 0 || (avgNeededPerSlot >= overview.averagePlayerPrice * 0.3);
+                            const hasRoleGap = Object.values(team.roleDistribution).some(count => count === 0) && team.squadSize > 3;
+                            const overspentEarly = team.budgetUtilization > 70 && team.squadSize < team.minRequired;
+                            
+                            let status = 'HEALTHY';
+                            let statusColor = 'text-[var(--accent)]';
+                            let borderColor = 'border-[var(--border)]';
+                            let bgColor = 'bg-transparent';
+                            
+                            if (!canCompleteSquad && team.playersNeeded > 0) {
+                                status = 'BUDGET CRISIS';
+                                statusColor = 'text-red-400';
+                                borderColor = 'border-red-400';
+                                bgColor = 'bg-red-950/20';
+                            } else if (overspentEarly) {
+                                status = 'BUDGET RISK';
+                                statusColor = 'text-orange-400';
+                                borderColor = 'border-orange-400';
+                                bgColor = 'bg-orange-950/20';
+                            } else if (hasRoleGap) {
+                                status = 'ROLE GAP';
+                                statusColor = 'text-yellow-400';
+                                borderColor = 'border-yellow-400';
+                                bgColor = 'bg-yellow-950/20';
+                            } else if (team.squadSize >= team.minRequired) {
+                                status = 'COMPLETE';
+                                statusColor = 'text-[var(--accent)]';
+                                borderColor = 'border-[var(--accent)]';
+                                bgColor = 'bg-[var(--accent)]/10';
+                            }
+                            
+                            return (
+                                <div key={team.id} className={`card p-5 ${bgColor} ${borderColor}`}>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3 h-3 border-2" style={{ backgroundColor: team.color, borderColor: team.color }} />
+                                            <span className="font-[var(--font-grotesk)] font-bold text-[var(--foreground)] text-sm">
+                                                {team.name}
+                                            </span>
+                                        </div>
+                                        <div className={`font-mono text-xs font-bold ${statusColor} uppercase`}>
+                                            {status}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-2 text-xs font-mono">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-400">Players Needed:</span>
+                                            <span className={team.playersNeeded > 0 ? "text-orange-400 font-bold" : "text-[var(--accent)] font-bold"}>
+                                                {team.playersNeeded}
+                                            </span>
+                                        </div>
+                                        
+                                        {team.slotsRemaining > 0 && (
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-400">Avg/Slot:</span>
+                                                <span className="text-[var(--foreground)]">
+                                                    {formatCurrency(avgNeededPerSlot)}
+                                                </span>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-400">Budget Left:</span>
+                                            <span className="text-[var(--accent)] font-bold">
+                                                {formatCurrency(team.remainingBudget)}
+                                            </span>
+                                        </div>
+                                        
+                                        {hasRoleGap && (
+                                            <div className="mt-2 pt-2 border-t border-[var(--border)]">
+                                                <span className="text-yellow-400">
+                                                    ⚠ Missing: {Object.entries(team.roleDistribution)
+                                                        .filter(([_, count]) => count === 0)
+                                                        .map(([role]) => role.slice(0, 3))
+                                                        .join(', ')}
+                                                </span>
+                                            </div>
+                                        )}
+                                        
+                                        {!canCompleteSquad && team.playersNeeded > 0 && (
+                                            <div className="mt-2 pt-2 border-t border-red-400">
+                                                <span className="text-red-400 text-[10px]">
+                                                    ⚠ Insufficient budget to complete minimum squad
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Completion Forecast */}
+                <div className="card p-6 mb-10 border-[var(--accent)]">
+                    <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6 border-l-4 border-[var(--accent)] pl-4">COMPLETION FORECAST</h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="border-b-2 border-[var(--accent)]">
+                                    <th className="text-left py-3 px-4 font-[var(--font-grotesk)] font-bold text-[var(--foreground)] uppercase text-sm">Team</th>
+                                    <th className="text-center py-3 px-4 font-mono text-gray-400 uppercase text-xs">Current</th>
+                                    <th className="text-center py-3 px-4 font-mono text-gray-400 uppercase text-xs">Need</th>
+                                    <th className="text-center py-3 px-4 font-mono text-gray-400 uppercase text-xs">Slots Left</th>
+                                    <th className="text-right py-3 px-4 font-mono text-gray-400 uppercase text-xs">Avg/Slot</th>
+                                    <th className="text-center py-3 px-4 font-mono text-gray-400 uppercase text-xs">Feasibility</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {teamStats
+                                    .sort((a, b) => {
+                                        const aFeasibility = a.slotsRemaining > 0 && a.playersNeeded > 0
+                                            ? (a.remainingBudget / a.slotsRemaining) / (overview.averagePlayerPrice)
+                                            : 999;
+                                        const bFeasibility = b.slotsRemaining > 0 && b.playersNeeded > 0
+                                            ? (b.remainingBudget / b.slotsRemaining) / (overview.averagePlayerPrice)
+                                            : 999;
+                                        return aFeasibility - bFeasibility;
+                                    })
+                                    .map((team) => {
+                                        const avgPerSlot = team.slotsRemaining > 0 ? team.remainingBudget / team.slotsRemaining : 0;
+                                        const feasibilityRatio = avgPerSlot > 0 ? (avgPerSlot / overview.averagePlayerPrice) * 100 : 0;
+                                        
+                                        let feasibilityLabel = 'COMPLETE';
+                                        let feasibilityColor = 'text-[var(--accent)]';
+                                        
+                                        if (team.playersNeeded > 0) {
+                                            if (feasibilityRatio < 30) {
+                                                feasibilityLabel = 'CRITICAL';
+                                                feasibilityColor = 'text-red-400';
+                                            } else if (feasibilityRatio < 60) {
+                                                feasibilityLabel = 'DIFFICULT';
+                                                feasibilityColor = 'text-orange-400';
+                                            } else if (feasibilityRatio < 100) {
+                                                feasibilityLabel = 'MODERATE';
+                                                feasibilityColor = 'text-yellow-400';
+                                            } else {
+                                                feasibilityLabel = 'EASY';
+                                                feasibilityColor = 'text-[var(--accent)]';
+                                            }
+                                        }
+                                        
+                                        return (
+                                            <tr key={team.id} className="border-b border-[var(--border)] hover:bg-[#0a0a0a] transition-colors">
+                                                <td className="py-3 px-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-3 h-3 border-2" style={{ backgroundColor: team.color, borderColor: team.color }} />
+                                                        <span className="font-bold text-[var(--foreground)]">{team.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="text-center py-3 px-4 font-mono text-[var(--foreground)]">{team.squadSize}</td>
+                                                <td className="text-center py-3 px-4 font-mono font-bold text-orange-400">{team.playersNeeded}</td>
+                                                <td className="text-center py-3 px-4 font-mono text-[var(--foreground)]">{team.slotsRemaining}</td>
+                                                <td className="text-right py-3 px-4 font-mono text-[var(--accent)] text-sm">
+                                                    {team.slotsRemaining > 0 ? formatCurrency(avgPerSlot) : 'N/A'}
+                                                </td>
+                                                <td className="text-center py-3 px-4">
+                                                    <span className={`font-mono font-bold text-xs ${feasibilityColor}`}>
+                                                        {feasibilityLabel}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-4 text-xs font-mono text-gray-400 italic">
+                        * Feasibility based on remaining budget vs average player cost
                     </div>
                 </div>
 
@@ -1040,6 +1339,113 @@ export default function AuctionStatsPage() {
                                                 : budgetPlayers > superstarPlayers + premiumPlayers
                                                 ? 'VALUE-FOCUSED'
                                                 : 'BALANCED'}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Auction Performance Scorecard */}
+                <div className="card p-6 mb-10 border-[var(--accent)]">
+                    <h2 className="text-2xl md:text-3xl font-[var(--font-grotesk)] font-bold text-[var(--foreground)] mb-6 border-l-4 border-[var(--accent)] pl-4">AUCTION PERFORMANCE SCORECARD</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {teamStats.map(team => {
+                            // Calculate individual scores (0-100)
+                            const budgetEfficiencyScore = team.squadSize > 0 && team.moneySpent > 0
+                                ? Math.min(((team.squadSize / team.maxAllowed) / (team.moneySpent / team.totalBudget)) * 50, 100)
+                                : 0;
+                            
+                            const squadCompletionScore = (team.squadSize / team.minRequired) * 100;
+                            const cappedCompletionScore = Math.min(squadCompletionScore, 100);
+                            
+                            const totalPlayers = team.squadSize;
+                            const idealDistribution = {
+                                BATSMAN: totalPlayers * 0.35,
+                                BOWLER: totalPlayers * 0.35,
+                                ALLROUNDER: totalPlayers * 0.20,
+                                WICKETKEEPER: totalPlayers * 0.10
+                            };
+                            const deviations = Object.keys(team.roleDistribution).map(role => {
+                                const actual = team.roleDistribution[role as keyof typeof team.roleDistribution];
+                                const ideal = idealDistribution[role as keyof typeof idealDistribution];
+                                return totalPlayers > 0 ? Math.abs(actual - ideal) / totalPlayers * 100 : 0;
+                            });
+                            const avgDeviation = deviations.reduce((a, b) => a + b, 0) / deviations.length;
+                            const roleBalanceScore = Math.max(0, 100 - avgDeviation);
+                            
+                            const teamPlayers = allPlayers.filter(p => p.teamId === team.id && p.soldPrice);
+                            const valueScore = teamPlayers.length > 0 ? teamPlayers.reduce((sum, p) => {
+                                const roleAvg = overview.avgPriceByRole[normalizeRole(p.role)] || 0;
+                                const savings = roleAvg - (p.soldPrice || 0);
+                                const savingsPercent = roleAvg > 0 ? (savings / roleAvg) * 100 : 0;
+                                return sum + Math.max(0, Math.min(savingsPercent + 50, 100));
+                            }, 0) / teamPlayers.length : 50;
+                            
+                            // Weighted overall score
+                            const overallScore = (
+                                budgetEfficiencyScore * 0.25 +
+                                cappedCompletionScore * 0.35 +
+                                roleBalanceScore * 0.20 +
+                                valueScore * 0.20
+                            );
+                            
+                            // Grade calculation
+                            let grade = 'F';
+                            let gradeColor = 'text-gray-400';
+                            if (overallScore >= 90) { grade = 'A+'; gradeColor = 'text-[var(--accent)]'; }
+                            else if (overallScore >= 85) { grade = 'A'; gradeColor = 'text-[var(--accent)]'; }
+                            else if (overallScore >= 80) { grade = 'A-'; gradeColor = 'text-[var(--accent)]'; }
+                            else if (overallScore >= 75) { grade = 'B+'; gradeColor = 'text-green-400'; }
+                            else if (overallScore >= 70) { grade = 'B'; gradeColor = 'text-green-400'; }
+                            else if (overallScore >= 65) { grade = 'B-'; gradeColor = 'text-yellow-400'; }
+                            else if (overallScore >= 60) { grade = 'C+'; gradeColor = 'text-yellow-400'; }
+                            else if (overallScore >= 55) { grade = 'C'; gradeColor = 'text-orange-400'; }
+                            else if (overallScore >= 50) { grade = 'C-'; gradeColor = 'text-orange-400'; }
+                            else if (overallScore >= 40) { grade = 'D'; gradeColor = 'text-red-400'; }
+                            
+                            return (
+                                <div key={team.id} className="card p-5 bg-[#0a0a0a] hover:border-[var(--accent)] transition-colors">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2" style={{ backgroundColor: team.color, borderColor: team.color }} />
+                                            <span className="font-[var(--font-grotesk)] font-bold text-[var(--foreground)]">{team.name}</span>
+                                        </div>
+                                        <div className={`text-4xl font-bold font-mono ${gradeColor}`}>
+                                            {grade}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mb-4">
+                                        <div className="flex justify-between text-xs font-mono text-gray-400 mb-1">
+                                            <span>OVERALL SCORE</span>
+                                            <span className="text-[var(--foreground)] font-bold">{overallScore.toFixed(0)}/100</span>
+                                        </div>
+                                        <div className="w-full h-2 border border-[var(--border)] relative">
+                                            <div 
+                                                className="h-full bg-[var(--accent)]"
+                                                style={{ width: `${overallScore}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-2 text-xs font-mono">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-400">Budget Efficiency</span>
+                                            <span className="text-[var(--foreground)] font-bold">{budgetEfficiencyScore.toFixed(0)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-400">Squad Completion</span>
+                                            <span className="text-[var(--foreground)] font-bold">{cappedCompletionScore.toFixed(0)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-400">Role Balance</span>
+                                            <span className="text-[var(--foreground)] font-bold">{roleBalanceScore.toFixed(0)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-400">Value Acquisitions</span>
+                                            <span className="text-[var(--foreground)] font-bold">{valueScore.toFixed(0)}</span>
                                         </div>
                                     </div>
                                 </div>
