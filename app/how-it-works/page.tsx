@@ -218,11 +218,183 @@ const guides = {
     },
 };
 
+// Reusable Guide Details Component
+function GuideDetails({ 
+    guide, 
+    expandedStep, 
+    setExpandedStep,
+    selectedType 
+}: { 
+    guide: typeof guides.admin, 
+    expandedStep: number | null, 
+    setExpandedStep: (step: number | null) => void,
+    selectedType: UserType | null
+}) {
+    return (
+        <div className="container max-w-5xl">
+            {/* Guide Header */}
+            <div className="mb-8 md:mb-12 px-4">
+                <div className="flex items-center justify-center gap-4 mb-4">
+                    <div className="h-1 w-12 bg-accent"></div>
+                    <div className="px-4 py-2 border-3 border-accent bg-accent/10 font-mono text-sm font-bold">
+                        {guide.badge}
+                    </div>
+                    <div className="h-1 w-12 bg-accent"></div>
+                </div>
+                <h2 className="text-center mb-4 text-2xl md:text-3xl lg:text-4xl">{guide.title}</h2>
+                <p className="text-lg md:text-xl lg:text-2xl font-mono text-accent text-center">
+                    {guide.subtitle}
+                </p>
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-6 md:space-y-8 px-4">
+                {guide.steps.map((step, index) => (
+                    <div
+                        key={index}
+                        className={`card transition-all relative overflow-hidden ${
+                            expandedStep === index
+                                ? 'border-accent border-5'
+                                : 'border-border border-3'
+                        }`}
+                    >
+                        {/* Decorative corner */}
+                        {expandedStep === index && (
+                            <div className="absolute top-0 left-0 w-0 h-0 border-t-[30px] border-t-accent border-r-[30px] border-r-transparent opacity-20"></div>
+                        )}
+                        
+                        {/* Step Header */}
+                        <button
+                            onClick={() => setExpandedStep(expandedStep === index ? null : index)}
+                            className="w-full p-6 md:p-8 text-left hover:bg-accent/5 transition-colors"
+                        >
+                            <div className="flex items-start gap-4 md:gap-6">
+                                <div className="flex-shrink-0">
+                                    <div className={`font-grotesk text-3xl md:text-4xl font-bold transition-colors ${
+                                        expandedStep === index ? 'text-accent' : 'text-muted'
+                                    }`}>
+                                        {step.number}
+                                    </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-grotesk text-xl md:text-2xl font-bold mb-2">
+                                        {step.title}
+                                    </h3>
+                                    <p className="font-mono text-sm md:text-base text-muted">
+                                        {step.description}
+                                    </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                    <div
+                                        className={`w-8 h-8 border-3 flex items-center justify-center transition-all ${
+                                            expandedStep === index 
+                                                ? 'border-accent text-accent rotate-180' 
+                                                : 'border-border'
+                                        }`}
+                                    >
+                                        ▼
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+
+                        {/* Expanded Content */}
+                        {expandedStep === index && (
+                            <div className="px-6 md:px-8 pb-6 md:pb-8 border-t-3 border-accent">
+                                <div className="pt-6 space-y-6">
+                                    {/* Details List */}
+                                    <div className="space-y-3">
+                                        {step.details.map((detail, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="flex items-start gap-3 font-mono text-sm md:text-base group"
+                                            >
+                                                <span className="text-accent flex-shrink-0 mt-1 font-bold">▸</span>
+                                                <span className="group-hover:text-accent transition-colors">{detail}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Code/Technical Info */}
+                                    <div className="p-4 md:p-5 border-3 border-muted bg-background/50 font-mono text-xs md:text-sm">
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-accent flex-shrink-0">$</span>
+                                            <code className="text-accent">{step.code}</code>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* CTA Section */}
+            <div className="mt-12 md:mt-16 text-center px-4">
+                <div className="card p-8 md:p-10 border-accent relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 border-5 border-accent opacity-5"></div>
+                    <div className="absolute bottom-0 left-0 w-24 h-24 border-5 border-accent opacity-5"></div>
+                    <div className="relative z-10">
+                        <h3 className="font-grotesk text-2xl md:text-3xl font-bold mb-4">
+                            START {selectedType === 'admin' ? 'CREATING' : selectedType === 'participant' ? 'BIDDING' : 'WATCHING'}
+                        </h3>
+                        <p className="font-mono text-base md:text-lg text-muted mb-6">
+                            {selectedType === 'admin' && 'Navigate to /admin to create your first auction'}
+                            {selectedType === 'participant' && 'Browse /auction to join and start bidding'}
+                            {selectedType === 'spectator' && 'Enter any LIVE auction to watch without participating'}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            {selectedType === 'admin' && (
+                                <Link href="/admin">
+                                    <Button variant="primary" className="text-lg px-8 py-4 w-full sm:w-auto">
+                                        GO TO ADMIN
+                                    </Button>
+                                </Link>
+                            )}
+                            {selectedType === 'participant' && (
+                                <Link href="/auction">
+                                    <Button variant="primary" className="text-lg px-8 py-4 w-full sm:w-auto">
+                                        BROWSE AUCTIONS
+                                    </Button>
+                                </Link>
+                            )}
+                            {selectedType === 'spectator' && (
+                                <Link href="/auction">
+                                    <Button variant="primary" className="text-lg px-8 py-4 w-full sm:w-auto">
+                                        FIND LIVE AUCTIONS
+                                    </Button>
+                                </Link>
+                            )}
+                            <Link href="/">
+                                <Button variant="secondary" className="text-lg px-8 py-4 w-full sm:w-auto">
+                                    BACK HOME
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function HowItWorksPage() {
-    const [selectedType, setSelectedType] = useState<UserType>('admin');
+    const [selectedType, setSelectedType] = useState<UserType | null>(null);
     const [expandedStep, setExpandedStep] = useState<number | null>(0);
 
-    const currentGuide = guides[selectedType];
+    const currentGuide = selectedType ? guides[selectedType] : null;
+
+    const handleTypeSelect = (type: UserType) => {
+        if (selectedType === type) {
+            // Toggle off if clicking the same type
+            setSelectedType(null);
+            setExpandedStep(null);
+        } else {
+            // Select new type
+            setSelectedType(type);
+            setExpandedStep(0);
+        }
+    };
 
     return (
         <div className="min-h-screen">
@@ -248,10 +420,7 @@ export default function HowItWorksPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-6xl mx-auto px-4">
                         {/* Admin Card */}
                         <button
-                            onClick={() => {
-                                setSelectedType('admin');
-                                setExpandedStep(0);
-                            }}
+                            onClick={() => handleTypeSelect('admin')}
                             className={`card p-6 md:p-8 text-left transition-all group relative overflow-hidden ${
                                 selectedType === 'admin' ? 'border-accent border-5' : 'border-border border-3 hover:border-accent'
                             }`}
@@ -275,12 +444,16 @@ export default function HowItWorksPage() {
                             </div>
                         </button>
 
+                        {/* Admin Details - Shows on mobile/tablet between admin and participant */}
+                        {selectedType === 'admin' && (
+                            <div className="md:hidden col-span-1">
+                                <GuideDetails guide={guides.admin} expandedStep={expandedStep} setExpandedStep={setExpandedStep} selectedType="admin" />
+                            </div>
+                        )}
+
                         {/* Participant Card */}
                         <button
-                            onClick={() => {
-                                setSelectedType('participant');
-                                setExpandedStep(0);
-                            }}
+                            onClick={() => handleTypeSelect('participant')}
                             className={`card p-6 md:p-8 text-left transition-all group relative overflow-hidden ${
                                 selectedType === 'participant' ? 'border-accent border-5' : 'border-border border-3 hover:border-accent'
                             }`}
@@ -304,12 +477,16 @@ export default function HowItWorksPage() {
                             </div>
                         </button>
 
+                        {/* Participant Details - Shows on mobile/tablet between participant and spectator */}
+                        {selectedType === 'participant' && (
+                            <div className="md:hidden col-span-1">
+                                <GuideDetails guide={guides.participant} expandedStep={expandedStep} setExpandedStep={setExpandedStep} selectedType="participant" />
+                            </div>
+                        )}
+
                         {/* Spectator Card */}
                         <button
-                            onClick={() => {
-                                setSelectedType('spectator');
-                                setExpandedStep(0);
-                            }}
+                            onClick={() => handleTypeSelect('spectator')}
                             className={`card p-6 md:p-8 text-left transition-all group relative overflow-hidden ${
                                 selectedType === 'spectator' ? 'border-accent border-5' : 'border-border border-3 hover:border-accent'
                             }`}
@@ -332,157 +509,23 @@ export default function HowItWorksPage() {
                                 </div>
                             </div>
                         </button>
+
+                        {/* Spectator Details - Shows on mobile/tablet after spectator */}
+                        {selectedType === 'spectator' && (
+                            <div className="md:hidden col-span-1">
+                                <GuideDetails guide={guides.spectator} expandedStep={expandedStep} setExpandedStep={setExpandedStep} selectedType="spectator" />
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
 
-            {/* Guide Content */}
-            <section className="section py-12 md:py-16 lg:py-20">
-                <div className="container max-w-5xl">
-                    {/* Guide Header */}
-                    <div className="mb-12 md:mb-16 px-4">
-                        <div className="flex items-center justify-center gap-4 mb-4">
-                            <div className="h-1 w-12 bg-accent"></div>
-                            <div className="px-4 py-2 border-3 border-accent bg-accent/10 font-mono text-sm font-bold">
-                                {currentGuide.badge}
-                            </div>
-                            <div className="h-1 w-12 bg-accent"></div>
-                        </div>
-                        <h2 className="text-center mb-4">{currentGuide.title}</h2>
-                        <p className="text-xl md:text-2xl font-mono text-accent text-center">
-                            {currentGuide.subtitle}
-                        </p>
-                    </div>
-
-                    {/* Steps */}
-                    <div className="space-y-6 md:space-y-8 px-4">
-                        {currentGuide.steps.map((step, index) => (
-                            <div
-                                key={index}
-                                className={`card transition-all relative overflow-hidden ${
-                                    expandedStep === index
-                                        ? 'border-accent border-5'
-                                        : 'border-border border-3'
-                                }`}
-                            >
-                                {/* Decorative corner */}
-                                {expandedStep === index && (
-                                    <div className="absolute top-0 left-0 w-0 h-0 border-t-[30px] border-t-accent border-r-[30px] border-r-transparent opacity-20"></div>
-                                )}
-                                
-                                {/* Step Header */}
-                                <button
-                                    onClick={() => setExpandedStep(expandedStep === index ? null : index)}
-                                    className="w-full p-6 md:p-8 text-left hover:bg-accent/5 transition-colors"
-                                >
-                                    <div className="flex items-start gap-4 md:gap-6">
-                                        <div className="flex-shrink-0">
-                                            <div className={`font-grotesk text-3xl md:text-4xl font-bold transition-colors ${
-                                                expandedStep === index ? 'text-accent' : 'text-muted'
-                                            }`}>
-                                                {step.number}
-                                            </div>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-grotesk text-xl md:text-2xl font-bold mb-2">
-                                                {step.title}
-                                            </h3>
-                                            <p className="font-mono text-sm md:text-base text-muted">
-                                                {step.description}
-                                            </p>
-                                        </div>
-                                        <div className="flex-shrink-0">
-                                            <div
-                                                className={`w-8 h-8 border-3 flex items-center justify-center transition-all ${
-                                                    expandedStep === index 
-                                                        ? 'border-accent text-accent rotate-180' 
-                                                        : 'border-border'
-                                                }`}
-                                            >
-                                                ▼
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-
-                                {/* Expanded Content */}
-                                {expandedStep === index && (
-                                    <div className="px-6 md:px-8 pb-6 md:pb-8 border-t-3 border-accent">
-                                        <div className="pt-6 space-y-6">
-                                            {/* Details List */}
-                                            <div className="space-y-3">
-                                                {step.details.map((detail, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className="flex items-start gap-3 font-mono text-sm md:text-base group"
-                                                    >
-                                                        <span className="text-accent flex-shrink-0 mt-1 font-bold">▸</span>
-                                                        <span className="group-hover:text-accent transition-colors">{detail}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {/* Code/Technical Info */}
-                                            <div className="p-4 md:p-5 border-3 border-muted bg-background/50 font-mono text-xs md:text-sm">
-                                                <div className="flex items-start gap-2">
-                                                    <span className="text-accent flex-shrink-0">$</span>
-                                                    <code className="text-accent">{step.code}</code>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* CTA Section */}
-                    <div className="mt-12 md:mt-16 text-center px-4">
-                        <div className="card p-8 md:p-10 border-accent relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 border-5 border-accent opacity-5"></div>
-                            <div className="absolute bottom-0 left-0 w-24 h-24 border-5 border-accent opacity-5"></div>
-                            <div className="relative z-10">
-                                <h3 className="font-grotesk text-2xl md:text-3xl font-bold mb-4">
-                                    START {selectedType === 'admin' ? 'CREATING' : selectedType === 'participant' ? 'BIDDING' : 'WATCHING'}
-                                </h3>
-                                <p className="font-mono text-base md:text-lg text-muted mb-6">
-                                    {selectedType === 'admin' && 'Navigate to /admin to create your first auction'}
-                                    {selectedType === 'participant' && 'Browse /auction to join and start bidding'}
-                                    {selectedType === 'spectator' && 'Enter any LIVE auction to watch without participating'}
-                                </p>
-                                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                    {selectedType === 'admin' && (
-                                        <Link href="/admin">
-                                            <Button variant="primary" className="text-lg px-8 py-4 w-full sm:w-auto">
-                                                GO TO ADMIN
-                                            </Button>
-                                        </Link>
-                                    )}
-                                    {selectedType === 'participant' && (
-                                        <Link href="/auction">
-                                            <Button variant="primary" className="text-lg px-8 py-4 w-full sm:w-auto">
-                                                BROWSE AUCTIONS
-                                            </Button>
-                                        </Link>
-                                    )}
-                                    {selectedType === 'spectator' && (
-                                        <Link href="/auction">
-                                            <Button variant="primary" className="text-lg px-8 py-4 w-full sm:w-auto">
-                                                FIND LIVE AUCTIONS
-                                            </Button>
-                                        </Link>
-                                    )}
-                                    <Link href="/">
-                                        <Button variant="secondary" className="text-lg px-8 py-4 w-full sm:w-auto">
-                                            BACK HOME
-                                        </Button>
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            {/* Guide Content - Only shows on desktop (md and up) */}
+            {currentGuide && (
+                <section className="section py-12 md:py-16 lg:py-20 hidden md:block">
+                    <GuideDetails guide={currentGuide} expandedStep={expandedStep} setExpandedStep={setExpandedStep} selectedType={selectedType} />
+                </section>
+            )}
 
             {/* Quick Reference Section */}
             <section className="section py-12 md:py-16 border-t-3 border-border">
