@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
@@ -129,21 +129,24 @@ export default function AuctioneerControlPanel({
         return tierA - tierB;
     });
 
-    // Apply random selection filter
-    if (randomSelection && playersToAuction.length > 0) {
-        // If no random player selected yet, or the current random player is no longer in the list, pick a new one
-        if (!randomPlayerId || !playersToAuction.find(p => p.id === randomPlayerId)) {
-            const randomIndex = Math.floor(Math.random() * playersToAuction.length);
-            const newRandomPlayer = playersToAuction[randomIndex];
-            setRandomPlayerId(newRandomPlayer.id);
-            playersToAuction = [newRandomPlayer];
-        } else {
-            // Keep showing the same random player
-            playersToAuction = playersToAuction.filter(p => p.id === randomPlayerId);
+    // Use effect to handle random player selection to avoid infinite loop
+    useEffect(() => {
+        if (randomSelection && playersToAuction.length > 0) {
+            // If no random player selected yet, or the current random player is no longer in the list, pick a new one
+            if (!randomPlayerId || !playersToAuction.find(p => p.id === randomPlayerId)) {
+                const randomIndex = Math.floor(Math.random() * playersToAuction.length);
+                const newRandomPlayer = playersToAuction[randomIndex];
+                setRandomPlayerId(newRandomPlayer.id);
+            }
+        } else if (!randomSelection && randomPlayerId) {
+            // Reset random player when random selection is turned off
+            setRandomPlayerId(null);
         }
-    } else if (!randomSelection) {
-        // Reset random player when random selection is turned off
-        setRandomPlayerId(null);
+    }, [randomSelection, playersToAuction.length, randomPlayerId]);
+
+    // Apply random selection filter after determining the random player
+    if (randomSelection && randomPlayerId) {
+        playersToAuction = playersToAuction.filter(p => p.id === randomPlayerId);
     }
 
     // Get unique roles for filter
