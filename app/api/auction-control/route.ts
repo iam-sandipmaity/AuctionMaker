@@ -21,7 +21,11 @@ const skipRtmSchema = z.object({
     auctionId: z.string(),
 });
 
-const submitRtmOfferSchema = z.object({
+const useRtmSchema = z.object({
+    auctionId: z.string(),
+});
+
+const submitWinningTeamCounterSchema = z.object({
     auctionId: z.string(),
     amount: z.number().positive(),
 });
@@ -92,8 +96,10 @@ export async function POST(request: NextRequest) {
             return handleStartAuction(body, session.user.id);
         } else if (action === 'skip-rtm') {
             return handleSkipRtm(body, session.user.id);
-        } else if (action === 'submit-rtm-offer') {
-            return handleSubmitRtmOffer(body, session.user.id);
+        } else if (action === 'use-rtm' || action === 'submit-rtm-offer') {
+            return handleUseRtm(body, session.user.id);
+        } else if (action === 'submit-winning-team-counter') {
+            return handleSubmitWinningTeamCounter(body, session.user.id);
         } else if (action === 'respond-rtm-counter') {
             return handleRespondRtmCounter(body, session.user.id);
         } else {
@@ -398,14 +404,14 @@ async function handleEndPlayerAuction(body: any, userId: string) {
                         pendingRtmEligibleTeamId: eligibleRtmTeam.id,
                         pendingRtmWinningTeamId: winningBid.teamId,
                         pendingRtmWinningBidId: winningBid.id,
-                        pendingRtmAmount: winningBid.amount,
+                        pendingRtmAmount: null,
                     },
                 }),
             ]);
 
             if (io) {
                 io.to(`auction:${validatedData.auctionId}`).emit('rtm:available', {
-                    phase: 'AWAITING_RTM_OFFER',
+                    phase: 'AWAITING_RTM_DECISION',
                     playerId: player.id,
                     playerName: player.name,
                     winningBidId: winningBid.id,
@@ -513,9 +519,9 @@ async function handleSkipRtm(body: any, userId: string) {
         );
     }
 
-    if (getPendingRtmPhase(auction) !== 'AWAITING_RTM_OFFER') {
+    if (getPendingRtmPhase(auction) !== 'AWAITING_RTM_DECISION') {
         return NextResponse.json(
-            { success: false, error: 'The RTM offer has already been submitted for this player' },
+            { success: false, error: 'The RTM decision has already been made for this player' },
             { status: 400 }
         );
     }
@@ -555,16 +561,13 @@ async function handleSkipRtm(body: any, userId: string) {
     });
 }
 
-async function handleSubmitRtmOffer(body: any, userId: string) {
-    const validatedData = submitRtmOfferSchema.parse({
-        ...body,
-        amount: Math.round(Number(body.amount) * 100) / 100,
-    });
+async function handleUseRtm(body: any, userId: string) {
+    const validatedData = useRtmSchema.parse(body);
     const user = await getUserWithTeam(userId);
 
     if (!user?.team || user.team.auctionId !== validatedData.auctionId) {
         return NextResponse.json(
-            { success: false, error: 'Only the RTM-eligible team can submit an RTM offer' },
+            { success: false, error: 'Only the RTM-eligible team can use RTM for this player' },
             { status: 403 }
         );
     }
@@ -578,9 +581,9 @@ async function handleSubmitRtmOffer(body: any, userId: string) {
         );
     }
 
-    if (getPendingRtmPhase(auction) !== 'AWAITING_RTM_OFFER') {
+    if (getPendingRtmPhase(auction) !== 'AWAITING_RTM_DECISION') {
         return NextResponse.json(
-            { success: false, error: 'The RTM offer has already been submitted for this player' },
+            { success: false, error: 'The RTM decision has already been made for this player' },
             { status: 400 }
         );
     }
@@ -600,18 +603,93 @@ async function handleSubmitRtmOffer(body: any, userId: string) {
     }
 
     const winningBidAmount = Number(auction.pendingRtmWinningBid?.amount || 0);
+
+    if (Number(user.team.budget) < winningBidAmount) {
+        return NextResponse.json(
+            { success: false, error: 'Insufficient budget to use RTM for this player' },
+            { status: 400 }
+        );
+    }
+
+    await prisma.auction.update({
+        where: { id: auction.id },
+        data: {
+            currentPrice: auction.pendingRtmWinningBid!.amount,
+            rtmStatus: 'PENDING',
+            pendingRtmAmount: auction.pendingRtmWinningBid!.amount,
+        },
+    });
+
+    emitRtmActivated({
+        auctionId: auction.id,
+        playerId: auction.pendingRtmPlayerId,
+        playerName: auction.pendingRtmPlayer?.name || '',
+        originalAmount: winningBidAmount,
+        amount: winningBidAmount,
+        eligibleTeam: user.team,
+        winningTeam: auction.pendingRtmWinningTeam!,
+    });
+
+    return NextResponse.json({
+        success: true,
+        message: `${user.team.shortName} chose to use RTM`,
+        data: {
+            playerId: auction.pendingRtmPlayerId,
+            amount: winningBidAmount,
+        },
+    });
+}
+
+async function handleSubmitWinningTeamCounter(body: any, userId: string) {
+    const validatedData = submitWinningTeamCounterSchema.parse({
+        ...body,
+        amount: Math.round(Number(body.amount) * 100) / 100,
+    });
+    const user = await getUserWithTeam(userId);
+
+    if (!user?.team || user.team.auctionId !== validatedData.auctionId) {
+        return NextResponse.json(
+            { success: false, error: 'Only the current winning team can submit the RTM retention price' },
+            { status: 403 }
+        );
+    }
+
+    const auction = await getPendingRtmAuction(validatedData.auctionId);
+
+    if (!auction || auction.rtmStatus !== 'PENDING' || !auction.pendingRtmPlayerId || !auction.pendingRtmWinningBidId || !auction.pendingRtmEligibleTeamId || !auction.pendingRtmWinningTeamId) {
+        return NextResponse.json(
+            { success: false, error: 'No RTM window is awaiting a winning-team price' },
+            { status: 400 }
+        );
+    }
+
+    if (getPendingRtmPhase(auction) !== 'AWAITING_WINNING_TEAM_COUNTER') {
+        return NextResponse.json(
+            { success: false, error: 'The winning team cannot submit a price at this RTM stage' },
+            { status: 400 }
+        );
+    }
+
+    if (auction.pendingRtmWinningTeamId !== user.team.id) {
+        return NextResponse.json(
+            { success: false, error: 'This RTM window belongs to another winning team' },
+            { status: 403 }
+        );
+    }
+
+    const winningBidAmount = Number(auction.pendingRtmWinningBid?.amount || 0);
     const counterAmount = validatedData.amount;
 
     if (counterAmount <= winningBidAmount) {
         return NextResponse.json(
-            { success: false, error: 'RTM offer must be higher than the winning bid' },
+            { success: false, error: 'Retention price must be higher than the winning bid' },
             { status: 400 }
         );
     }
 
     if (Number(user.team.budget) < counterAmount) {
         return NextResponse.json(
-            { success: false, error: 'Insufficient budget to submit this RTM offer' },
+            { success: false, error: 'Insufficient budget to keep the player at this price' },
             { status: 400 }
         );
     }
@@ -631,13 +709,13 @@ async function handleSubmitRtmOffer(body: any, userId: string) {
         playerName: auction.pendingRtmPlayer?.name || '',
         originalAmount: winningBidAmount,
         amount: counterAmount,
-        eligibleTeam: user.team,
-        winningTeam: auction.pendingRtmWinningTeam!,
+        eligibleTeam: auction.pendingRtmEligibleTeam!,
+        winningTeam: user.team,
     });
 
     return NextResponse.json({
         success: true,
-        message: `${user.team.shortName} submitted an RTM counter-offer`,
+        message: `${user.team.shortName} submitted the retention price`,
         data: {
             playerId: auction.pendingRtmPlayerId,
             amount: counterAmount,
@@ -651,7 +729,7 @@ async function handleRespondRtmCounter(body: any, userId: string) {
 
     if (!user?.team || user.team.auctionId !== validatedData.auctionId) {
         return NextResponse.json(
-            { success: false, error: 'Only the current winning team can answer this RTM counter-offer' },
+            { success: false, error: 'Only the RTM team can answer this final RTM price' },
             { status: 403 }
         );
     }
@@ -660,35 +738,28 @@ async function handleRespondRtmCounter(body: any, userId: string) {
 
     if (!auction || auction.rtmStatus !== 'PENDING' || !auction.pendingRtmPlayerId || !auction.pendingRtmWinningBidId || !auction.pendingRtmEligibleTeamId || !auction.pendingRtmWinningTeamId || !auction.pendingRtmAmount) {
         return NextResponse.json(
-            { success: false, error: 'No RTM counter-offer is awaiting a decision' },
+            { success: false, error: 'No RTM price is awaiting a final decision' },
             { status: 400 }
         );
     }
 
-    if (getPendingRtmPhase(auction) !== 'AWAITING_WINNER_RESPONSE') {
+    if (getPendingRtmPhase(auction) !== 'AWAITING_RTM_FINAL_DECISION') {
         return NextResponse.json(
-            { success: false, error: 'The RTM counter-offer is not ready for the winning team yet' },
+            { success: false, error: 'The RTM team cannot respond at this stage yet' },
             { status: 400 }
         );
     }
 
-    if (auction.pendingRtmWinningTeamId !== user.team.id) {
+    if (auction.pendingRtmEligibleTeamId !== user.team.id) {
         return NextResponse.json(
-            { success: false, error: 'This RTM counter-offer belongs to another winning team' },
+            { success: false, error: 'This RTM decision belongs to another team' },
             { status: 403 }
         );
     }
 
     const counterAmount = Number(auction.pendingRtmAmount);
 
-    if (validatedData.accept) {
-        if (Number(user.team.budget) < counterAmount) {
-            return NextResponse.json(
-                { success: false, error: 'Insufficient budget to keep the player at the new RTM price' },
-                { status: 400 }
-            );
-        }
-
+    if (!validatedData.accept) {
         const saleResult = await finalizeSaleToExistingWinningTeam({
             auctionId: auction.id,
             playerId: auction.pendingRtmPlayerId,
@@ -714,8 +785,15 @@ async function handleRespondRtmCounter(body: any, userId: string) {
 
         return NextResponse.json({
             success: true,
-            message: `${user.team.shortName} kept the player at the RTM counter price`,
+            message: `${auction.pendingRtmWinningTeam?.shortName || 'Winning team'} kept the player at the new price`,
         });
+    }
+
+    if (Number(user.team.budget) < counterAmount) {
+        return NextResponse.json(
+            { success: false, error: 'Insufficient budget to take the player at this RTM price' },
+            { status: 400 }
+        );
     }
 
     let rtmResult;
@@ -757,7 +835,7 @@ async function handleRespondRtmCounter(body: any, userId: string) {
 
     return NextResponse.json({
         success: true,
-        message: `${rtmResult.team.shortName} won the player via RTM`,
+        message: `${rtmResult.team.shortName} accepted the RTM price and won the player`,
         data: {
             teamId: rtmResult.team.id,
             playerId: auction.pendingRtmPlayerId,
@@ -960,6 +1038,17 @@ async function getPendingRtmAuction(auctionId: string) {
                     amount: true,
                 },
             },
+            pendingRtmEligibleTeam: {
+                select: {
+                    id: true,
+                    name: true,
+                    shortName: true,
+                    color: true,
+                    budget: true,
+                    squadSize: true,
+                    rtmCardsRemaining: true,
+                },
+            },
             pendingRtmWinningTeam: {
                 select: {
                     id: true,
@@ -976,12 +1065,63 @@ async function getPendingRtmAuction(auctionId: string) {
 }
 
 function getPendingRtmPhase(auction: NonNullable<Awaited<ReturnType<typeof getPendingRtmAuction>>>) {
+    if (auction.pendingRtmAmount === null) {
+        return 'AWAITING_RTM_DECISION';
+    }
+
     const pendingAmount = Number(auction.pendingRtmAmount || 0);
     const winningAmount = Number(auction.pendingRtmWinningBid?.amount || 0);
 
     return pendingAmount > winningAmount
-        ? 'AWAITING_WINNER_RESPONSE'
-        : 'AWAITING_RTM_OFFER';
+        ? 'AWAITING_RTM_FINAL_DECISION'
+        : 'AWAITING_WINNING_TEAM_COUNTER';
+}
+
+function emitRtmActivated({
+    auctionId,
+    playerId,
+    playerName,
+    originalAmount,
+    amount,
+    eligibleTeam,
+    winningTeam,
+}: {
+    auctionId: string;
+    playerId: string;
+    playerName: string;
+    originalAmount: number;
+    amount: number;
+    eligibleTeam: {
+        id: string;
+        name: string;
+        shortName: string;
+        color: string;
+        budget: any;
+        squadSize: number;
+        rtmCardsRemaining: number;
+    };
+    winningTeam: {
+        id: string;
+        name: string;
+        shortName: string;
+        color: string;
+        budget: any;
+        squadSize: number;
+        rtmCardsRemaining: number;
+    };
+}) {
+    const io = (global as any).io;
+    if (!io) return;
+
+    io.to(`auction:${auctionId}`).emit('rtm:activated', {
+        phase: 'AWAITING_WINNING_TEAM_COUNTER',
+        playerId,
+        playerName,
+        originalAmount,
+        amount,
+        eligibleTeam: toTeamSocketData(eligibleTeam),
+        winningTeam: toTeamSocketData(winningTeam),
+    });
 }
 
 function emitRtmCountered({
@@ -1021,7 +1161,7 @@ function emitRtmCountered({
     if (!io) return;
 
     io.to(`auction:${auctionId}`).emit('rtm:countered', {
-        phase: 'AWAITING_WINNER_RESPONSE',
+        phase: 'AWAITING_RTM_FINAL_DECISION',
         playerId,
         playerName,
         originalAmount,
