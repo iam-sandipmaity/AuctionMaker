@@ -466,7 +466,7 @@ function inferSlotGuidance(input: {
     const bowler = pacer || spinner || /bowler/.test(haystack);
 
     let battingRole = 'support batter';
-    let bowlingRole = spinner ? 'spinner' : pacer ? 'pace bowler' : bowler ? 'bowler' : 'non-bowler';
+    const bowlingRole = spinner ? 'spinner' : pacer ? 'pace bowler' : bowler ? 'bowler' : 'non-bowler';
     let preferredSlots: string[] = [];
     let avoidSlots: string[] = [];
 
