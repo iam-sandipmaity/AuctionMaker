@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSocket } from '@/lib/socket/client';
 import Badge from '@/components/ui/Badge';
@@ -11,6 +11,7 @@ import AdminTeamManager from '@/components/auction/AdminTeamManager';
 import AdminPlayerManager from '@/components/auction/AdminPlayerManager';
 import AuctioneerControlPanel from '@/components/auction/AuctioneerControlPanel';
 import PlayerPoolView from '@/components/auction/PlayerPoolView';
+import AiAnalyzerPanel from '@/components/auction/AiAnalyzerPanel';
 import { AuctionWithBids } from '@/types';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -93,7 +94,7 @@ interface TeamAuctionRoomClientProps {
 }
 
 export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoomClientProps) {
-    const { data: session } = useSession();
+    const { data: session, status: sessionStatus } = useSession();
     const { socket, isConnected } = useSocket(initialAuction.id);
     const { showToast } = useToast();
     const [auction, setAuction] = useState(initialAuction);
@@ -104,13 +105,14 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     const [loading, setLoading] = useState(false);
     const [bidAmount, setBidAmount] = useState('');
     const [bidError, setBidError] = useState('');
-    const [tab, setTab] = useState<'auction' | 'teams' | 'players'>('auction');
+    const [tab, setTab] = useState<'auction' | 'teams' | 'players' | 'ai'>('auction');
     const [selectedTeamForSquad, setSelectedTeamForSquad] = useState<Team | null>(null);
     const [showReconnecting, setShowReconnecting] = useState(false);
     const [rtmState, setRtmState] = useState<RtmState | null>(null);
     const [rtmDecisionLoading, setRtmDecisionLoading] = useState(false);
     const [rtmOfferAmount, setRtmOfferAmount] = useState('');
     const [rtmOfferError, setRtmOfferError] = useState('');
+    const trackedViewKeyRef = useRef('');
 
     const isAdmin = session?.user?.id === auction.createdById;
     const currentPlayer = players.find((player) => player.isCurrentlyAuctioning) || null;
@@ -150,19 +152,33 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
 
     useEffect(() => {
         const trackView = async () => {
-            if (!session?.user) return;
+            if (sessionStatus !== 'authenticated' || !session?.user?.id) return;
+
+            const trackingKey = `${auction.id}:${session.user.id}`;
+            if (trackedViewKeyRef.current === trackingKey) {
+                return;
+            }
+
             try {
-                await fetch('/api/auction-view', {
+                const response = await fetch('/api/auction-view', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ auctionId: auction.id }),
                 });
+
+                if (response.status === 404) {
+                    return;
+                }
+
+                if (response.ok) {
+                    trackedViewKeyRef.current = trackingKey;
+                }
             } catch (error) {
                 console.error('Failed to track view:', error);
             }
         };
         trackView();
-    }, [auction.id, session?.user]);
+    }, [auction.id, session?.user?.id, sessionStatus]);
 
     useEffect(() => {
         fetchTeams();
@@ -1008,6 +1024,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                     <Button variant={tab === 'auction' ? 'primary' : 'secondary'} onClick={() => setTab('auction')} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">LIVE AUCTION</Button>
                     <Button variant={tab === 'players' ? 'primary' : 'secondary'} onClick={() => setTab('players')} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">PLAYER POOL</Button>
                     <Button variant={tab === 'teams' ? 'primary' : 'secondary'} onClick={() => setTab('teams')} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">TEAMS</Button>
+                    <Button variant={tab === 'ai' ? 'primary' : 'secondary'} onClick={() => setTab('ai')} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">AI ANALYZER</Button>
                     <a href={`/auction/${auction.id}/stats`} target="_blank" rel="noopener noreferrer">
                         <Button variant="secondary" className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">ANALYTICS</Button>
                     </a>
@@ -1107,6 +1124,25 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                         ))}
                     </div>
                 </div>
+            )}
+
+            {tab === 'ai' && (
+                <AiAnalyzerPanel
+                    auctionId={auction.id}
+                    auction={{
+                        title: auction.title,
+                        currency: auction.currency,
+                        budgetDenomination: auction.budgetDenomination,
+                    }}
+                    teams={teams}
+                    players={players.map((player) => ({
+                        id: player.id,
+                        name: player.name,
+                        role: player.role,
+                        previousTeamShortName: player.previousTeamShortName,
+                    }))}
+                    userTeamId={userTeam?.id}
+                />
             )}
 
             {selectedTeamForSquad && (
