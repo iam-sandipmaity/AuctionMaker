@@ -8,58 +8,69 @@ export async function createBid(data: {
     playerId?: string;
     teamId?: string;
 }) {
-    // For team auctions, set previous bids for this specific player to not winning
-    // For product auctions, set all previous bids for the auction to not winning
-    if (data.playerId) {
-        await prisma.bid.updateMany({
-            where: {
-                auctionId: data.auctionId,
-                playerId: data.playerId,
-                isWinning: true,
-            },
-            data: {
-                isWinning: false,
-            },
-        });
-    } else {
-        await prisma.bid.updateMany({
-            where: {
-                auctionId: data.auctionId,
-                isWinning: true,
-            },
-            data: {
-                isWinning: false,
-            },
-        });
-    }
+    return prisma.$transaction(async (tx) => {
+        // For team auctions, set previous bids for this specific player to not winning
+        // For product auctions, set all previous bids for the auction to not winning
+        if (data.playerId) {
+            await tx.bid.updateMany({
+                where: {
+                    auctionId: data.auctionId,
+                    playerId: data.playerId,
+                    isWinning: true,
+                },
+                data: {
+                    isWinning: false,
+                },
+            });
+        } else {
+            await tx.bid.updateMany({
+                where: {
+                    auctionId: data.auctionId,
+                    isWinning: true,
+                },
+                data: {
+                    isWinning: false,
+                },
+            });
+        }
 
-    // Create the new bid as winning
-    return prisma.bid.create({
-        data: {
-            auctionId: data.auctionId,
-            userId: data.userId,
-            amount: new Decimal(data.amount),
-            playerId: data.playerId,
-            teamId: data.teamId,
-            isWinning: true,
-        },
-        include: {
-            user: {
-                select: {
-                    id: true,
-                    username: true,
-                    name: true,
+        const bid = await tx.bid.create({
+            data: {
+                auctionId: data.auctionId,
+                userId: data.userId,
+                amount: new Decimal(data.amount),
+                playerId: data.playerId,
+                teamId: data.teamId,
+                isWinning: true,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        username: true,
+                        name: true,
+                    },
+                },
+                team: {
+                    select: {
+                        id: true,
+                        name: true,
+                        shortName: true,
+                        color: true,
+                        budget: true,
+                    },
                 },
             },
-            team: {
-                select: {
-                    id: true,
-                    name: true,
-                    shortName: true,
-                    color: true,
-                },
+        });
+
+        await tx.auction.update({
+            where: { id: data.auctionId },
+            data: {
+                currentPrice: new Decimal(data.amount),
             },
-        },
+        });
+
+        return bid;
     });
 }
 
