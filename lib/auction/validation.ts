@@ -23,6 +23,7 @@ export async function validateBid(
             maxParticipants: true,
             currentPlayerId: true,
             rtmStatus: true,
+            maxSquadSize: true,
         },
     });
 
@@ -41,6 +42,23 @@ export async function validateBid(
     }
 
     if (auction.auctionType === 'TEAM') {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                team: {
+                    select: {
+                        id: true,
+                        auctionId: true,
+                        squadSize: true,
+                    },
+                },
+            },
+        });
+
+        if (!user?.team || user.team.auctionId !== auctionId) {
+            return { valid: false, error: 'Join a team in this auction before bidding' };
+        }
+
         if (!playerId) {
             return { valid: false, error: 'Player ID is required for team auction bids' };
         }
@@ -51,6 +69,13 @@ export async function validateBid(
 
         if (!auction.currentPlayerId || auction.currentPlayerId !== playerId) {
             return { valid: false, error: 'This player is not currently being auctioned' };
+        }
+
+        if (auction.maxSquadSize && user.team.squadSize >= auction.maxSquadSize) {
+            return {
+                valid: false,
+                error: `Your squad is full. You cannot bid for more than ${auction.maxSquadSize} players.`,
+            };
         }
     }
 
