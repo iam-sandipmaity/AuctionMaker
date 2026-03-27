@@ -35,7 +35,15 @@ export interface Auction {
     teamBudget?: number | Decimal | null;
     minSquadSize?: number | null;
     maxSquadSize?: number | null;
+    maxRtmSelectionsPerTeam?: number | null;
+    rtmCardsPerTeam?: number | null;
     currentPlayerId?: string | null;
+    rtmStatus?: 'NONE' | 'PENDING';
+    pendingRtmPlayerId?: string | null;
+    pendingRtmEligibleTeamId?: string | null;
+    pendingRtmWinningTeamId?: string | null;
+    pendingRtmWinningBidId?: string | null;
+    pendingRtmAmount?: number | Decimal | null;
 }
 
 export interface Team {
@@ -47,6 +55,7 @@ export interface Team {
     budget: number | Decimal;
     totalBudget: number | Decimal;
     squadSize: number;
+    rtmCardsRemaining?: number;
     auctionId: string;
     createdAt: Date;
     updatedAt: Date;
@@ -61,6 +70,7 @@ export interface Player {
     soldPrice?: number | Decimal | null;
     status: 'UNSOLD' | 'SOLD';
     imageUrl?: string | null;
+    previousTeamShortName?: string | null;
     auctionId: string;
     teamId?: string | null;
     isCurrentlyAuctioning: boolean;
@@ -68,6 +78,9 @@ export interface Player {
     createdAt: Date;
     updatedAt: Date;
     team?: Team;
+    rtmSelections?: {
+        team: Pick<Team, 'id' | 'shortName' | 'color'> & { rtmCardsRemaining?: number };
+    }[];
 }
 
 export interface Bid {
@@ -155,6 +168,8 @@ export interface CreateAuctionInput {
     teamBudget?: number;
     minSquadSize?: number;
     maxSquadSize?: number;
+    maxRtmSelectionsPerTeam?: number;
+    rtmCardsPerTeam?: number;
 }
 
 export interface PlaceBidInput {
