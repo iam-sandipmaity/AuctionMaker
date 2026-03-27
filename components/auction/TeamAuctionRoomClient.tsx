@@ -136,6 +136,11 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         rtmState.status === 'AWAITING_RTM_FINAL_DECISION' &&
         userTeam.id === rtmState.eligibleTeam.id
     );
+    const isSquadFull = Boolean(
+        userTeam &&
+        auction.maxSquadSize &&
+        userTeam.squadSize >= auction.maxSquadSize
+    );
 
     const formatCurrency = (amount: number | string | null | undefined) => {
         const num = Number(amount || 0).toFixed(2);
@@ -654,6 +659,11 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     const handlePlaceBid = async () => {
         if (!currentPlayer || !userTeam) return;
 
+        if (isSquadFull) {
+            setBidError(`Your squad is full. You cannot bid for more than ${auction.maxSquadSize} players.`);
+            return;
+        }
+
         const amount = Math.round(parseFloat(bidAmount) * 100) / 100;
         if (isNaN(amount) || amount <= 0) {
             setBidError('Invalid bid amount');
@@ -712,6 +722,13 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                         <p className="font-mono text-sm text-red-500">{bidError}</p>
                     </div>
                 )}
+                {isSquadFull && (
+                    <div className="mb-4 p-3 border-3 border-yellow-500 bg-yellow-500/10">
+                        <p className="font-mono text-sm text-yellow-700">
+                            Your squad is full at {auction.maxSquadSize} players. You cannot join this player auction.
+                        </p>
+                    </div>
+                )}
                 <div className="space-y-4">
                     <Input
                         label={`Amount (${auction.budgetDenomination ? `${auction.budgetDenomination} ` : ''}${auction.currency})`}
@@ -723,9 +740,10 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                         }}
                         step="0.01"
                         min="0"
+                        disabled={isSquadFull}
                         placeholder={currentPlayerBids[0] ? (Number(currentPlayerBids[0].amount) + Number(auction.minIncrement)).toFixed(2) : Number(currentPlayer.basePrice).toFixed(2)}
                     />
-                    <Button variant="primary" onClick={handlePlaceBid} disabled={loading || !bidAmount} className="w-full">
+                    <Button variant="primary" onClick={handlePlaceBid} disabled={loading || !bidAmount || isSquadFull} className="w-full">
                         {loading ? 'PLACING BID...' : 'PLACE BID'}
                     </Button>
                     <div className="pt-4 border-t-3 border-border text-sm space-y-2">
@@ -739,6 +757,14 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                             <span className="font-mono text-muted">Your Budget:</span>
                             <span className="font-mono font-bold text-accent">{formatCurrency(userTeam.budget)}</span>
                         </div>
+                        {auction.maxSquadSize && (
+                            <div className="flex justify-between">
+                                <span className="font-mono text-muted">Squad Slots:</span>
+                                <span className="font-mono font-bold">
+                                    {Math.max(auction.maxSquadSize - userTeam.squadSize, 0)} left of {auction.maxSquadSize}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </Card>
