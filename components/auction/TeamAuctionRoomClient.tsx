@@ -272,6 +272,8 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         });
 
         socket.on('rtm:available', (data: { phase: 'AWAITING_RTM_DECISION'; playerId: string; playerName: string; winningBidId: string; amount: number; eligibleTeam: Team; winningTeam: Team }) => {
+            setRtmDecisionLoading(false);
+            setRtmOfferError('');
             setPlayers((prev) => prev.map((player) => ({ ...player, isCurrentlyAuctioning: false })));
             setAuction((prev) => ({
                 ...prev,
@@ -296,6 +298,8 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         });
 
         socket.on('rtm:activated', (data: { phase: 'AWAITING_WINNING_TEAM_COUNTER'; playerId: string; playerName: string; originalAmount: number; amount: number; eligibleTeam: Team; winningTeam: Team }) => {
+            setRtmDecisionLoading(false);
+            setRtmOfferError('');
             setAuction((prev) => ({
                 ...prev,
                 currentPrice: data.amount,
@@ -318,6 +322,8 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         });
 
         socket.on('rtm:countered', (data: { phase: 'AWAITING_RTM_FINAL_DECISION'; playerId: string; playerName: string; originalAmount: number; amount: number; eligibleTeam: Team; winningTeam: Team }) => {
+            setRtmDecisionLoading(false);
+            setRtmOfferError('');
             setAuction((prev) => ({
                 ...prev,
                 currentPrice: data.amount,
