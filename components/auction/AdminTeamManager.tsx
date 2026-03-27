@@ -206,6 +206,31 @@ Lucknow Super Giants,LSG,#4E9ED9,`;
                 name: "Delhi Capitals",
                 shortName: "DC",
                 color: "#282968"
+            },
+            {
+                name: "Rajasthan Royals",
+                shortName: "RR",
+                color: "#254AA5"
+            },
+            {
+                name: "Punjab Kings",
+                shortName: "PBKS",
+                color: "#ED1B24"
+            },
+            {
+                name: "Sunrisers Hyderabad",
+                shortName: "SRH",
+                color: "#FF822A"
+            },
+            {
+                name: "Gujarat Titans",
+                shortName: "GT",
+                color: "#1C2841"
+            },
+            {
+                name: "Lucknow Super Giants",
+                shortName: "LSG",
+                color: "#4E9ED9"
             }
         ];
 

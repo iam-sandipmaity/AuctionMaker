@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/ToastProvider';
+import { buildSamplePlayersCsv, samplePlayers } from '@/lib/auction/samplePlayers';
 
 interface Player {
     id: string;
@@ -161,7 +162,10 @@ export default function AdminPlayerManager({
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.error || 'Failed to import players');
+                const errorMessage = data.details?.length
+                    ? `${data.error || 'Failed to import players'}\n${data.details.join('\n')}`
+                    : data.error || 'Failed to import players';
+                setError(errorMessage);
                 return;
             }
 
@@ -177,14 +181,7 @@ export default function AdminPlayerManager({
     };
 
     const downloadSampleCSV = () => {
-        const csvContent = `name,description,role,base price,avatar url,marquee set,previous team short name
-Virat Kohli,Indian cricket captain,Batsman,2000000,https://example.com/virat.jpg,1,RCB
-Jasprit Bumrah,Fast bowler,Bowler,1800000,,1,MI
-Ravindra Jadeja,All-rounder,All-rounder,1500000,,2,CSK
-Hardik Pandya,All-rounder,All-rounder,1200000,,2,MI
-Rishabh Pant,Wicket-keeper batsman,Wicket-keeper,1000000,,3,DC`;
-
-        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const blob = new Blob([buildSamplePlayersCsv()], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -194,35 +191,7 @@ Rishabh Pant,Wicket-keeper batsman,Wicket-keeper,1000000,,3,DC`;
     };
 
     const downloadSampleJSON = () => {
-        const jsonContent = [
-            {
-                name: 'Virat Kohli',
-                description: 'Indian cricket captain',
-                role: 'Batsman',
-                basePrice: 2000000,
-                avatarUrl: 'https://example.com/virat.jpg',
-                marqueeSet: 1,
-                previousTeamShortName: 'RCB',
-            },
-            {
-                name: 'Jasprit Bumrah',
-                description: 'Fast bowler',
-                role: 'Bowler',
-                basePrice: 1800000,
-                marqueeSet: 1,
-                previousTeamShortName: 'MI',
-            },
-            {
-                name: 'Ravindra Jadeja',
-                description: 'All-rounder',
-                role: 'All-rounder',
-                basePrice: 1500000,
-                marqueeSet: 2,
-                previousTeamShortName: 'CSK',
-            },
-        ];
-
-        const blob = new Blob([JSON.stringify(jsonContent, null, 2)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(samplePlayers, null, 2)], { type: 'application/json' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -289,7 +258,7 @@ Rishabh Pant,Wicket-keeper batsman,Wicket-keeper,1000000,,3,DC`;
 
                     {error && (
                         <div className="mb-4 p-3 border-3 border-red-500 bg-red-500/10">
-                            <p className="font-mono text-sm text-red-500">{error}</p>
+                            <p className="font-mono text-sm text-red-500 whitespace-pre-wrap">{error}</p>
                         </div>
                     )}
 
@@ -333,7 +302,7 @@ Rishabh Pant,Wicket-keeper batsman,Wicket-keeper,1000000,,3,DC`;
 
                     {error && (
                         <div className="mb-4 p-3 border-3 border-red-500 bg-red-500/10">
-                            <p className="font-mono text-sm text-red-500">{error}</p>
+                            <p className="font-mono text-sm text-red-500 whitespace-pre-wrap">{error}</p>
                         </div>
                     )}
 

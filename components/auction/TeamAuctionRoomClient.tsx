@@ -66,7 +66,7 @@ interface Player {
 }
 
 interface RtmState {
-    status: 'AWAITING_RTM_OFFER' | 'AWAITING_WINNER_RESPONSE';
+    status: 'AWAITING_RTM_DECISION' | 'AWAITING_WINNING_TEAM_COUNTER' | 'AWAITING_RTM_FINAL_DECISION';
     playerId: string;
     playerName: string;
     originalAmount: number;
@@ -118,17 +118,23 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         .filter((bid) => bid.playerId === currentPlayer?.id)
         .map((bid) => ({ ...bid, amount: Number(bid.amount) }));
     const teamShortNames = useMemo(() => Array.from(new Set(teams.map((team) => team.shortName))).sort(), [teams]);
-    const isUserEligibleForRtmOffer = Boolean(
+    const isUserEligibleForRtmDecision = Boolean(
         userTeam &&
         rtmState &&
-        rtmState.status === 'AWAITING_RTM_OFFER' &&
+        rtmState.status === 'AWAITING_RTM_DECISION' &&
         userTeam.id === rtmState.eligibleTeam.id
     );
-    const isUserHoldingTeam = Boolean(
+    const isUserHoldingTeamForRtmCounter = Boolean(
         userTeam &&
         rtmState &&
-        rtmState.status === 'AWAITING_WINNER_RESPONSE' &&
+        rtmState.status === 'AWAITING_WINNING_TEAM_COUNTER' &&
         userTeam.id === rtmState.winningTeam.id
+    );
+    const isUserEligibleForRtmFinalDecision = Boolean(
+        userTeam &&
+        rtmState &&
+        rtmState.status === 'AWAITING_RTM_FINAL_DECISION' &&
+        userTeam.id === rtmState.eligibleTeam.id
     );
 
     const formatCurrency = (amount: number | string | null | undefined) => {
@@ -183,18 +189,22 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             if (pendingPlayer && eligibleTeam && winningTeam) {
                 const originalAmount = winningBid
                     ? Number(winningBid.amount)
-                    : Number(auction.pendingRtmAmount || 0);
-                const pendingAmount = Number(auction.pendingRtmAmount || 0);
-                const phase = pendingAmount > originalAmount
-                    ? 'AWAITING_WINNER_RESPONSE'
-                    : 'AWAITING_RTM_OFFER';
+                    : Number(auction.currentPrice || 0);
+                const pendingAmount = auction.pendingRtmAmount === null || auction.pendingRtmAmount === undefined
+                    ? null
+                    : Number(auction.pendingRtmAmount);
+                const phase = pendingAmount === null
+                    ? 'AWAITING_RTM_DECISION'
+                    : pendingAmount > originalAmount
+                        ? 'AWAITING_RTM_FINAL_DECISION'
+                        : 'AWAITING_WINNING_TEAM_COUNTER';
 
                 setRtmState({
                     status: phase,
                     playerId: pendingPlayer.id,
                     playerName: pendingPlayer.name,
                     originalAmount,
-                    currentAmount: pendingAmount,
+                    currentAmount: pendingAmount ?? originalAmount,
                     eligibleTeam,
                     winningTeam,
                 });
@@ -216,7 +226,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     ]);
 
     useEffect(() => {
-        if (rtmState?.status === 'AWAITING_RTM_OFFER') {
+        if (rtmState?.status === 'AWAITING_WINNING_TEAM_COUNTER') {
             setRtmOfferAmount((rtmState.originalAmount + 0.01).toFixed(2));
             setRtmOfferError('');
             return;
@@ -261,7 +271,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             }
         });
 
-        socket.on('rtm:available', (data: { phase: 'AWAITING_RTM_OFFER'; playerId: string; playerName: string; winningBidId: string; amount: number; eligibleTeam: Team; winningTeam: Team }) => {
+        socket.on('rtm:available', (data: { phase: 'AWAITING_RTM_DECISION'; playerId: string; playerName: string; winningBidId: string; amount: number; eligibleTeam: Team; winningTeam: Team }) => {
             setPlayers((prev) => prev.map((player) => ({ ...player, isCurrentlyAuctioning: false })));
             setAuction((prev) => ({
                 ...prev,
@@ -272,7 +282,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 pendingRtmEligibleTeamId: data.eligibleTeam.id,
                 pendingRtmWinningTeamId: data.winningTeam.id,
                 pendingRtmWinningBidId: data.winningBidId,
-                pendingRtmAmount: data.amount,
+                pendingRtmAmount: null,
             }));
             setRtmState({
                 status: data.phase,
@@ -285,7 +295,29 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             });
         });
 
-        socket.on('rtm:countered', (data: { phase: 'AWAITING_WINNER_RESPONSE'; playerId: string; playerName: string; originalAmount: number; amount: number; eligibleTeam: Team; winningTeam: Team }) => {
+        socket.on('rtm:activated', (data: { phase: 'AWAITING_WINNING_TEAM_COUNTER'; playerId: string; playerName: string; originalAmount: number; amount: number; eligibleTeam: Team; winningTeam: Team }) => {
+            setAuction((prev) => ({
+                ...prev,
+                currentPrice: data.amount,
+                rtmStatus: 'PENDING',
+                pendingRtmPlayerId: data.playerId,
+                pendingRtmEligibleTeamId: data.eligibleTeam.id,
+                pendingRtmWinningTeamId: data.winningTeam.id,
+                pendingRtmWinningBidId: prev.pendingRtmWinningBidId,
+                pendingRtmAmount: data.amount,
+            }));
+            setRtmState({
+                status: data.phase,
+                playerId: data.playerId,
+                playerName: data.playerName,
+                originalAmount: data.originalAmount,
+                currentAmount: data.amount,
+                eligibleTeam: data.eligibleTeam,
+                winningTeam: data.winningTeam,
+            });
+        });
+
+        socket.on('rtm:countered', (data: { phase: 'AWAITING_RTM_FINAL_DECISION'; playerId: string; playerName: string; originalAmount: number; amount: number; eligibleTeam: Team; winningTeam: Team }) => {
             setAuction((prev) => ({
                 ...prev,
                 currentPrice: data.amount,
@@ -336,6 +368,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             socket.off('player:auction:start');
             socket.off('bid:placed');
             socket.off('rtm:available');
+            socket.off('rtm:activated');
             socket.off('rtm:countered');
             socket.off('rtm:resolved');
             socket.off('player:sold');
@@ -521,12 +554,39 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         }
     };
 
-    const handleSubmitRtmOffer = async () => {
+    const handleUseRtm = async () => {
+        if (!rtmState || !userTeam) return;
+        setRtmDecisionLoading(true);
+        setRtmOfferError('');
+
+        try {
+            const response = await fetch('/api/auction-control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'use-rtm', auctionId: auction.id }),
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                setRtmOfferError(data.error || 'Failed to use RTM');
+                setRtmDecisionLoading(false);
+                return;
+            }
+
+            showToast('RTM activated', 'success');
+        } catch (error) {
+            console.error('Failed to use RTM:', error);
+            setRtmOfferError('An error occurred while using RTM');
+            setRtmDecisionLoading(false);
+        }
+    };
+
+    const handleSubmitWinningTeamCounter = async () => {
         if (!rtmState || !userTeam) return;
 
         const amount = Math.round(parseFloat(rtmOfferAmount) * 100) / 100;
         if (isNaN(amount) || amount <= rtmState.originalAmount) {
-            setRtmOfferError(`Offer must be higher than ${formatCurrency(rtmState.originalAmount)}`);
+            setRtmOfferError(`Retention price must be higher than ${formatCurrency(rtmState.originalAmount)}`);
             return;
         }
 
@@ -542,20 +602,20 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             const response = await fetch('/api/auction-control', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'submit-rtm-offer', auctionId: auction.id, amount }),
+                body: JSON.stringify({ action: 'submit-winning-team-counter', auctionId: auction.id, amount }),
             });
             const data = await response.json();
 
             if (!response.ok) {
-                setRtmOfferError(data.error || 'Failed to submit RTM offer');
+                setRtmOfferError(data.error || 'Failed to submit retention price');
                 setRtmDecisionLoading(false);
                 return;
             }
 
-            showToast('RTM offer submitted', 'success');
+            showToast('Retention price submitted', 'success');
         } catch (error) {
-            console.error('Failed to submit RTM offer:', error);
-            setRtmOfferError('An error occurred while submitting the RTM offer');
+            console.error('Failed to submit retention price:', error);
+            setRtmOfferError('An error occurred while submitting the retention price');
             setRtmDecisionLoading(false);
         }
     };
@@ -577,7 +637,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 return;
             }
 
-            showToast(accept ? 'Player retained at new RTM price' : 'Player transferred via RTM', 'success');
+            showToast(accept ? 'RTM accepted, player transferred' : 'RTM declined, winner keeps player', 'success');
         } catch (error) {
             console.error('Failed to resolve RTM counter-offer:', error);
             showToast('An error occurred while resolving the RTM counter-offer', 'error');
@@ -694,13 +754,17 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                         <p className="font-mono text-sm text-muted mt-2">
                             {rtmState.winningTeam.shortName} won the bidding at {formatCurrency(rtmState.originalAmount)}.
                         </p>
-                        {rtmState.status === 'AWAITING_RTM_OFFER' ? (
+                        {rtmState.status === 'AWAITING_RTM_DECISION' ? (
                             <p className="font-mono text-sm text-muted">
-                                {rtmState.eligibleTeam.shortName} can use RTM only by entering a higher offer.
+                                {rtmState.eligibleTeam.shortName} can choose whether to activate RTM for this player.
+                            </p>
+                        ) : rtmState.status === 'AWAITING_WINNING_TEAM_COUNTER' ? (
+                            <p className="font-mono text-sm text-muted">
+                                {rtmState.winningTeam.shortName} must now enter a higher retention price for {rtmState.eligibleTeam.shortName} to accept or decline.
                             </p>
                         ) : (
                             <p className="font-mono text-sm text-muted">
-                                {rtmState.eligibleTeam.shortName} has offered {formatCurrency(rtmState.currentAmount)}. {rtmState.winningTeam.shortName} must now accept or decline that price.
+                                {rtmState.winningTeam.shortName} has set {formatCurrency(rtmState.currentAmount)}. {rtmState.eligibleTeam.shortName} must now accept or decline that RTM price.
                             </p>
                         )}
                     </div>
@@ -710,9 +774,14 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                             <p className="font-mono text-xl font-bold" style={{ color: rtmState.winningTeam.color }}>
                                 {rtmState.winningTeam.shortName}
                             </p>
-                            {rtmState.status === 'AWAITING_WINNER_RESPONSE' && (
+                            {rtmState.status === 'AWAITING_WINNING_TEAM_COUNTER' && (
                                 <p className="font-mono text-xs text-muted mt-1">
-                                    Must decide at {formatCurrency(rtmState.currentAmount)}
+                                    Must quote a higher retention price
+                                </p>
+                            )}
+                            {rtmState.status === 'AWAITING_RTM_FINAL_DECISION' && (
+                                <p className="font-mono text-xs text-muted mt-1">
+                                    Asked for {formatCurrency(rtmState.currentAmount)}
                                 </p>
                             )}
                         </div>
@@ -726,7 +795,23 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                             </p>
                         </div>
                     </div>
-                    {isUserEligibleForRtmOffer ? (
+                    {isUserEligibleForRtmDecision ? (
+                        <div className="space-y-4">
+                            {rtmOfferError && (
+                                <div className="p-3 border-3 border-red-500 bg-red-500/10">
+                                    <p className="font-mono text-sm text-red-500">{rtmOfferError}</p>
+                                </div>
+                            )}
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <Button variant="primary" onClick={handleUseRtm} disabled={rtmDecisionLoading} className="flex-1">
+                                    {rtmDecisionLoading ? 'SUBMITTING...' : 'USE RTM'}
+                                </Button>
+                                <Button variant="secondary" onClick={handleSkipRtm} disabled={rtmDecisionLoading} className="flex-1">
+                                    SKIP RTM
+                                </Button>
+                            </div>
+                        </div>
+                    ) : isUserHoldingTeamForRtmCounter ? (
                         <div className="space-y-4">
                             {rtmOfferError && (
                                 <div className="p-3 border-3 border-red-500 bg-red-500/10">
@@ -734,7 +819,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                                 </div>
                             )}
                             <Input
-                                label={`RTM Offer (${auction.budgetDenomination ? `${auction.budgetDenomination} ` : ''}${auction.currency})`}
+                                label={`Retention Price (${auction.budgetDenomination ? `${auction.budgetDenomination} ` : ''}${auction.currency})`}
                                 type="number"
                                 value={rtmOfferAmount}
                                 onChange={(e) => {
@@ -745,29 +830,26 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                                 min="0"
                                 placeholder={(rtmState.originalAmount + 0.01).toFixed(2)}
                             />
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <Button variant="primary" onClick={handleSubmitRtmOffer} disabled={rtmDecisionLoading || !rtmOfferAmount} className="flex-1">
-                                    {rtmDecisionLoading ? 'SUBMITTING...' : 'SUBMIT RTM OFFER'}
-                                </Button>
-                                <Button variant="secondary" onClick={handleSkipRtm} disabled={rtmDecisionLoading} className="flex-1">
-                                    SKIP RTM
-                                </Button>
-                            </div>
+                            <Button variant="primary" onClick={handleSubmitWinningTeamCounter} disabled={rtmDecisionLoading || !rtmOfferAmount} className="w-full">
+                                {rtmDecisionLoading ? 'SUBMITTING...' : 'SUBMIT RETENTION PRICE'}
+                            </Button>
                         </div>
-                    ) : isUserHoldingTeam ? (
+                    ) : isUserEligibleForRtmFinalDecision ? (
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Button variant="primary" onClick={() => handleRespondToRtmCounter(true)} disabled={rtmDecisionLoading} className="flex-1">
-                                {rtmDecisionLoading ? 'SUBMITTING...' : `KEEP AT ${formatCurrency(rtmState.currentAmount)}`}
+                                {rtmDecisionLoading ? 'SUBMITTING...' : `ACCEPT AT ${formatCurrency(rtmState.currentAmount)}`}
                             </Button>
                             <Button variant="secondary" onClick={() => handleRespondToRtmCounter(false)} disabled={rtmDecisionLoading} className="flex-1">
-                                DECLINE AND RELEASE
+                                DECLINE RTM
                             </Button>
                         </div>
                     ) : (
                         <p className="font-mono text-sm text-muted">
-                            {rtmState.status === 'AWAITING_RTM_OFFER'
-                                ? `Waiting for ${rtmState.eligibleTeam.shortName} to submit an RTM offer.`
-                                : `Waiting for ${rtmState.winningTeam.shortName} to answer the RTM counter-offer.`}
+                            {rtmState.status === 'AWAITING_RTM_DECISION'
+                                ? `Waiting for ${rtmState.eligibleTeam.shortName} to decide whether to use RTM.`
+                                : rtmState.status === 'AWAITING_WINNING_TEAM_COUNTER'
+                                    ? `Waiting for ${rtmState.winningTeam.shortName} to submit a retention price.`
+                                    : `Waiting for ${rtmState.eligibleTeam.shortName} to accept or decline the RTM price.`}
                         </p>
                     )}
                 </div>
