@@ -11,6 +11,7 @@ interface PlayerImportData {
     avatarUrl?: string;
     marqueeSet?: number; // 1-5 (1 = top tier, 5 = low tier)
     isStarPlayer?: boolean; // Admin priority player
+    previousTeamShortName?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -109,6 +110,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const auctionTeams = await prisma.team.findMany({
+            where: { auctionId },
+            select: { shortName: true },
+        });
+        const validTeamShortNames = new Set(auctionTeams.map(team => team.shortName.toUpperCase()));
+
         // Validate players data
         const validationErrors: string[] = [];
         players.forEach((player, index) => {
@@ -120,6 +127,9 @@ export async function POST(request: NextRequest) {
             }
             if (player.marqueeSet && (player.marqueeSet < 1 || player.marqueeSet > 5)) {
                 validationErrors.push(`Row ${index + 1}: Marquee set must be between 1-5`);
+            }
+            if (player.previousTeamShortName && validTeamShortNames.size > 0 && !validTeamShortNames.has(player.previousTeamShortName.trim().toUpperCase())) {
+                validationErrors.push(`Row ${index + 1}: Previous team short name "${player.previousTeamShortName}" does not match any imported team short name`);
             }
         });
 
@@ -158,6 +168,7 @@ export async function POST(request: NextRequest) {
                         avatarUrl: player.avatarUrl?.trim() || null,
                         marqueeSet: player.marqueeSet || 5,
                         isStarPlayer: player.isStarPlayer || false,
+                        previousTeamShortName: player.previousTeamShortName?.trim().toUpperCase() || null,
                         status: 'UNSOLD',
                         isCurrentlyAuctioning: false,
                         auctionOrder: currentOrder,
@@ -245,6 +256,11 @@ function parseCSV(content: string): PlayerImportData[] {
         'star': 'isStarPlayer',
         'priority': 'isStarPlayer',
         'set': 'marqueeSet',
+        'previous team': 'previousTeamShortName',
+        'previous team short name': 'previousTeamShortName',
+        'previousteam': 'previousTeamShortName',
+        'previous franchise': 'previousTeamShortName',
+        'prev team': 'previousTeamShortName',
     };
 
     const players: PlayerImportData[] = [];
@@ -270,6 +286,8 @@ function parseCSV(content: string): PlayerImportData[] {
                 } else if (field === 'isStarPlayer') {
                     const val = values[index].toLowerCase();
                     player[field] = val === 'true' || val === 'yes' || val === '1';
+                } else if (field === 'previousTeamShortName') {
+                    player[field] = values[index].toUpperCase();
                 } else {
                     player[field] = values[index];
                 }
