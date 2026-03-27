@@ -115,6 +115,9 @@ export async function POST(request: NextRequest) {
             select: { shortName: true },
         });
         const validTeamShortNames = new Set(auctionTeams.map(team => team.shortName.toUpperCase()));
+        const validTeamsLabel = auctionTeams.length > 0
+            ? auctionTeams.map((team) => team.shortName.toUpperCase()).sort().join(', ')
+            : 'No teams have been created in this auction yet';
 
         // Validate players data
         const validationErrors: string[] = [];
@@ -129,7 +132,9 @@ export async function POST(request: NextRequest) {
                 validationErrors.push(`Row ${index + 1}: Marquee set must be between 1-5`);
             }
             if (player.previousTeamShortName && validTeamShortNames.size > 0 && !validTeamShortNames.has(player.previousTeamShortName.trim().toUpperCase())) {
-                validationErrors.push(`Row ${index + 1}: Previous team short name "${player.previousTeamShortName}" does not match any imported team short name`);
+                validationErrors.push(
+                    `Row ${index + 1}: Previous team short name "${player.previousTeamShortName}" does not match any team in this auction. Valid team short names: ${validTeamsLabel}`
+                );
             }
         });
 
