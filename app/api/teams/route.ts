@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
                     select: {
                         users: true,
                         players: true,
+                        rtmSelections: true,
                     },
                 },
             },
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
         // Verify user is the auction creator
         const auction = await prisma.auction.findUnique({
             where: { id: validatedData.auctionId },
-            select: { createdById: true, auctionType: true, teamBudget: true },
+            select: { createdById: true, auctionType: true, teamBudget: true, rtmCardsPerTeam: true },
         });
 
         if (!auction) {
@@ -112,15 +113,17 @@ export async function POST(request: NextRequest) {
         }
 
         const budget = new Decimal(validatedData.budget);
+        const normalizedShortName = validatedData.shortName.trim().toUpperCase();
 
         const team = await prisma.team.create({
             data: {
                 name: validatedData.name,
-                shortName: validatedData.shortName,
+                shortName: normalizedShortName,
                 color: validatedData.color,
                 logo: validatedData.logo,
                 budget: budget,
                 totalBudget: budget,
+                rtmCardsRemaining: auction.rtmCardsPerTeam,
                 auctionId: validatedData.auctionId,
             },
         });

@@ -67,7 +67,7 @@ export default function AuctioneerControlPanel({
     currency,
     budgetDenomination,
 }: AuctioneerControlPanelProps) {
-    const { showConfirm } = useToast();
+    const { showConfirm, showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -216,7 +216,12 @@ export default function AuctioneerControlPanel({
                 return;
             }
 
-            // Data updates via socket event (player:sold), no need to refresh
+            setError('');
+            if (data?.data?.rtmPending) {
+                showToast(data.message || 'RTM window opened', 'success');
+            } else {
+                showToast('Player sold successfully', 'success');
+            }
         } catch {
             setError('An error occurred. Please try again.');
         } finally {

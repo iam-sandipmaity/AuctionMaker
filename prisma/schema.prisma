@@ -54,8 +54,20 @@ model Auction {
   teamBudget      Decimal?  @db.Decimal(10, 2) // Budget for each team
   minSquadSize    Int?      // Minimum players each team must buy
   maxSquadSize    Int?      // Maximum players each team can buy
+  maxRtmSelectionsPerTeam Int @default(4)
+  rtmCardsPerTeam Int @default(2)
   currentPlayerId String?   // Currently being auctioned player
   currentPlayer   Player?   @relation("CurrentPlayer", fields: [currentPlayerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rtmStatus       RtmStatus @default(NONE)
+  pendingRtmPlayerId String?
+  pendingRtmPlayer Player? @relation("PendingRtmPlayer", fields: [pendingRtmPlayerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pendingRtmEligibleTeamId String?
+  pendingRtmEligibleTeam Team? @relation("PendingRtmEligibleTeam", fields: [pendingRtmEligibleTeamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pendingRtmWinningTeamId String?
+  pendingRtmWinningTeam Team? @relation("PendingRtmWinningTeam", fields: [pendingRtmWinningTeamId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pendingRtmWinningBidId String?
+  pendingRtmWinningBid Bid? @relation("PendingRtmWinningBid", fields: [pendingRtmWinningBidId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pendingRtmAmount Decimal? @db.Decimal(10, 2)
 
   winnerId   String?
   winner     User?   @relation("WinnerRelation", fields: [winnerId], references: [id])
@@ -89,6 +101,8 @@ model Bid {
   teamId    String?  // For team auctions - which team is bidding
   team      Team?    @relation(fields: [teamId], references: [id])
 
+  pendingRtmAuctions Auction[] @relation("PendingRtmWinningBid")
+
   @@map("bids")
   @@index([auctionId])
   @@index([userId])
@@ -104,6 +118,7 @@ model Team {
   budget      Decimal  @db.Decimal(10, 2)
   totalBudget Decimal  @db.Decimal(10, 2)
   squadSize   Int      @default(0) // Current number of players
+  rtmCardsRemaining Int @default(2)
   auctionId   String
   auction     Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -113,8 +128,12 @@ model Team {
   users   User[]   @relation("TeamUsers")
   bids    Bid[]
   playerInterests PlayerInterest[] // Players this team is interested in
+  rtmSelections TeamRtmPlayer[]
+  pendingEligibleAuctions Auction[] @relation("PendingRtmEligibleTeam")
+  pendingWinningAuctions Auction[] @relation("PendingRtmWinningTeam")
 
   @@unique([auctionId, name])
+  @@unique([auctionId, shortName])
   @@map("teams")
 }
 
@@ -131,6 +150,7 @@ model Player {
   marqueeSet  Int?     // Marquee tier (1-5: 1=top tier, 5=low tier)
   isStarPlayer Boolean @default(false) // Admin marked as priority player
   hasBeenAuctioned Boolean @default(false) // Has this player been put up for auction at least once?
+  previousTeamShortName String? // Previous season franchise short name, e.g. "CSK"
   auctionId   String
   auction     Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   teamId      String?
@@ -142,9 +162,23 @@ model Player {
 
   bids        Bid[]
   currentAuctions Auction[] @relation("CurrentPlayer")
+  pendingRtmAuctions Auction[] @relation("PendingRtmPlayer")
   interestedTeams PlayerInterest[] // Teams interested in this player
+  rtmSelections TeamRtmPlayer[]
 
   @@map("players")
+}
+
+model TeamRtmPlayer {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, playerId])
+  @@map("team_rtm_players")
 }
 
 model PlayerInterest {
@@ -186,4 +220,9 @@ enum AuctionType {
 enum PlayerStatus {
   UNSOLD
   SOLD
+}
+
+enum RtmStatus {
+  NONE
+  PENDING
 }

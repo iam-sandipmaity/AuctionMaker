@@ -37,7 +37,9 @@ export default function BidForm({
             return;
         }
 
-        const bidAmount = parseFloat(amount);
+        let bidAmount = parseFloat(amount);
+        // Always round to 2 decimals
+        bidAmount = Math.round(bidAmount * 100) / 100;
         if (isNaN(bidAmount) || bidAmount < minBid) {
             setError(`Minimum bid is $${minBid.toFixed(2)}`);
             return;

@@ -30,6 +30,9 @@ export default async function AuctionPage({ params }: AuctionPageProps) {
         teamBudget: auction.teamBudget ? parseFloat(auction.teamBudget.toString()) : undefined,
         minSquadSize: auction.minSquadSize ?? undefined,
         maxSquadSize: auction.maxSquadSize ?? undefined,
+        maxRtmSelectionsPerTeam: auction.maxRtmSelectionsPerTeam ?? undefined,
+        rtmCardsPerTeam: auction.rtmCardsPerTeam ?? undefined,
+        pendingRtmAmount: auction.pendingRtmAmount ? parseFloat(auction.pendingRtmAmount.toString()) : undefined,
         bids: auction.bids.map(bid => ({
             ...bid,
             amount: parseFloat(bid.amount.toString()),

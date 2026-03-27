@@ -13,6 +13,7 @@ const createPlayerSchema = z.object({
     basePrice: z.number().positive(),
     imageUrl: z.string().url().optional(),
     isStarPlayer: z.boolean().optional(),
+    previousTeamShortName: z.string().max(5).optional(),
 });
 
 const updatePlayerSchema = z.object({
@@ -23,6 +24,7 @@ const updatePlayerSchema = z.object({
     basePrice: z.number().positive().optional(),
     imageUrl: z.string().url().optional(),
     isStarPlayer: z.boolean().optional(),
+    previousTeamShortName: z.string().max(5).optional(),
 });
 
 // Get players for an auction
@@ -77,6 +79,19 @@ export async function GET(request: NextRequest) {
                                 shortName: true,
                                 color: true,
                                 logo: true,
+                            },
+                        },
+                    },
+                },
+                rtmSelections: {
+                    where: isAdmin ? {} : (userTeamId ? { teamId: userTeamId } : { teamId: 'none' }),
+                    include: {
+                        team: {
+                            select: {
+                                id: true,
+                                shortName: true,
+                                color: true,
+                                rtmCardsRemaining: true,
                             },
                         },
                     },
@@ -139,6 +154,24 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const normalizedPreviousTeamShortName = validatedData.previousTeamShortName?.trim().toUpperCase();
+        if (normalizedPreviousTeamShortName) {
+            const matchingTeam = await prisma.team.findFirst({
+                where: {
+                    auctionId: validatedData.auctionId,
+                    shortName: normalizedPreviousTeamShortName,
+                },
+                select: { id: true },
+            });
+
+            if (!matchingTeam) {
+                return NextResponse.json(
+                    { success: false, error: 'Previous team short name must match a team in this auction' },
+                    { status: 400 }
+                );
+            }
+        }
+
         // Get the next auction order
         const lastPlayer = await prisma.player.findFirst({
             where: { auctionId: validatedData.auctionId },
@@ -155,6 +188,7 @@ export async function POST(request: NextRequest) {
                 role: validatedData.role,
                 basePrice: new Decimal(validatedData.basePrice),
                 imageUrl: validatedData.imageUrl,
+                previousTeamShortName: normalizedPreviousTeamShortName || null,
                 auctionId: validatedData.auctionId,
                 auctionOrder,
             },
@@ -225,12 +259,36 @@ export async function PATCH(request: NextRequest) {
             );
         }
 
+        if (validatedData.previousTeamShortName !== undefined) {
+            const normalizedPreviousTeamShortName = validatedData.previousTeamShortName?.trim().toUpperCase();
+
+            if (normalizedPreviousTeamShortName) {
+                const matchingTeam = await prisma.team.findFirst({
+                    where: {
+                        auctionId: player.auctionId,
+                        shortName: normalizedPreviousTeamShortName,
+                    },
+                    select: { id: true },
+                });
+
+                if (!matchingTeam) {
+                    return NextResponse.json(
+                        { success: false, error: 'Previous team short name must match a team in this auction' },
+                        { status: 400 }
+                    );
+                }
+            }
+        }
+
         const updateData: any = {};
         if (validatedData.name) updateData.name = validatedData.name;
         if (validatedData.description) updateData.description = validatedData.description;
         if (validatedData.role) updateData.role = validatedData.role;
         if (validatedData.basePrice) updateData.basePrice = new Decimal(validatedData.basePrice);
         if (validatedData.imageUrl) updateData.imageUrl = validatedData.imageUrl;
+        if (validatedData.previousTeamShortName !== undefined) {
+            updateData.previousTeamShortName = validatedData.previousTeamShortName?.trim().toUpperCase() || null;
+        }
 
         const updatedPlayer = await prisma.player.update({
             where: { id: validatedData.playerId },

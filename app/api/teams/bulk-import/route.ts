@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         // Verify user is the auction creator
         const auction = await prisma.auction.findUnique({
             where: { id: auctionId },
-            select: { createdById: true, auctionType: true, teamBudget: true },
+            select: { createdById: true, auctionType: true, teamBudget: true, rtmCardsPerTeam: true },
         });
 
         if (!auction) {
@@ -145,6 +145,7 @@ export async function POST(request: NextRequest) {
                         budget: teamBudget,
                         totalBudget: teamBudget,
                         squadSize: 0,
+                        rtmCardsRemaining: auction.rtmCardsPerTeam,
                         auctionId,
                     },
                 });

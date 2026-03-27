@@ -24,6 +24,8 @@ export default function AdminPage() {
         teamBudget: '100',
         minSquadSize: '11',
         maxSquadSize: '15',
+        maxRtmSelectionsPerTeam: '4',
+        rtmCardsPerTeam: '2',
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -59,6 +61,8 @@ export default function AdminPage() {
                 requestData.teamBudget = parseFloat(formData.teamBudget);
                 requestData.minSquadSize = parseInt(formData.minSquadSize);
                 requestData.maxSquadSize = parseInt(formData.maxSquadSize);
+                requestData.maxRtmSelectionsPerTeam = parseInt(formData.maxRtmSelectionsPerTeam);
+                requestData.rtmCardsPerTeam = parseInt(formData.rtmCardsPerTeam);
             }
 
             const response = await fetch('/api/auctions', {
@@ -88,6 +92,8 @@ export default function AdminPage() {
                 teamBudget: '100',
                 minSquadSize: '11',
                 maxSquadSize: '15',
+                maxRtmSelectionsPerTeam: '4',
+                rtmCardsPerTeam: '2',
             });
 
             // Redirect to the new auction after a short delay
@@ -271,6 +277,30 @@ export default function AdminPage() {
                                         required
                                         min="1"
                                         placeholder="15"
+                                    />
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <Input
+                                        label="RTM Players Per Team"
+                                        type="number"
+                                        value={formData.maxRtmSelectionsPerTeam}
+                                        onChange={(e) => setFormData({ ...formData, maxRtmSelectionsPerTeam: e.target.value })}
+                                        required
+                                        min="1"
+                                        placeholder="4"
+                                        helpText="How many players each team can pre-select for RTM"
+                                    />
+
+                                    <Input
+                                        label="RTM Cards Per Team"
+                                        type="number"
+                                        value={formData.rtmCardsPerTeam}
+                                        onChange={(e) => setFormData({ ...formData, rtmCardsPerTeam: e.target.value })}
+                                        required
+                                        min="1"
+                                        placeholder="2"
+                                        helpText="How many RTM cards each team can actually use"
                                     />
                                 </div>
 

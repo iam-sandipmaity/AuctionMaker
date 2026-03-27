@@ -19,6 +19,8 @@ export async function createAuction(data: {
     teamBudget?: number;
     minSquadSize?: number;
     maxSquadSize?: number;
+    maxRtmSelectionsPerTeam?: number;
+    rtmCardsPerTeam?: number;
 }) {
     const createData: any = {
         title: data.title,
@@ -42,6 +44,8 @@ export async function createAuction(data: {
         if (data.teamBudget) createData.teamBudget = new Decimal(data.teamBudget);
         if (data.minSquadSize) createData.minSquadSize = data.minSquadSize;
         if (data.maxSquadSize) createData.maxSquadSize = data.maxSquadSize;
+        createData.maxRtmSelectionsPerTeam = data.maxRtmSelectionsPerTeam ?? 4;
+        createData.rtmCardsPerTeam = data.rtmCardsPerTeam ?? 2;
     }
 
     return prisma.auction.create({

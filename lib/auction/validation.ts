@@ -1,5 +1,3 @@
-import { getAuctionById } from '@/lib/db/auctions';
-import { getHighestBid } from '@/lib/db/bids';
 import prisma from '@/lib/db/prisma';
 
 export interface BidValidationResult {
@@ -13,8 +11,21 @@ export async function validateBid(
     amount: number,
     playerId?: string
 ): Promise<BidValidationResult> {
-    // Get auction details
-    const auction = await getAuctionById(auctionId);
+    const auction = await prisma.auction.findUnique({
+        where: { id: auctionId },
+        select: {
+            status: true,
+            auctionType: true,
+            endTime: true,
+            currentPrice: true,
+            minIncrement: true,
+            currency: true,
+            maxParticipants: true,
+            currentPlayerId: true,
+            rtmStatus: true,
+        },
+    });
+
     if (!auction) {
         return { valid: false, error: 'Auction not found' };
     }
@@ -29,17 +40,42 @@ export async function validateBid(
         return { valid: false, error: 'Auction has ended' };
     }
 
+    if (auction.auctionType === 'TEAM') {
+        if (!playerId) {
+            return { valid: false, error: 'Player ID is required for team auction bids' };
+        }
+
+        if (auction.rtmStatus !== 'NONE') {
+            return { valid: false, error: 'Bidding is paused while RTM is being resolved' };
+        }
+
+        if (!auction.currentPlayerId || auction.currentPlayerId !== playerId) {
+            return { valid: false, error: 'This player is not currently being auctioned' };
+        }
+    }
+
     // Get current highest bid
     // For team auctions with a specific player, get the highest bid for that player only
-    const highestBid = playerId 
+    const highestBid = playerId
         ? await prisma.bid.findFirst({
             where: {
                 auctionId,
                 playerId,
                 isWinning: true,
             },
+            select: {
+                amount: true,
+            },
           })
-        : await getHighestBid(auctionId);
+        : await prisma.bid.findFirst({
+            where: {
+                auctionId,
+                isWinning: true,
+            },
+            select: {
+                amount: true,
+            },
+        });
     
     const currentPrice = highestBid
         ? (typeof highestBid.amount === 'object'
@@ -73,8 +109,14 @@ export async function validateBid(
 
     // Check max participants if set
     if (auction.maxParticipants) {
-        const uniqueBidders = new Set(auction.bids.map(b => b.userId));
-        if (uniqueBidders.size >= auction.maxParticipants && !uniqueBidders.has(userId)) {
+        const uniqueBidders = await prisma.bid.findMany({
+            where: { auctionId },
+            select: { userId: true },
+            distinct: ['userId'],
+        });
+
+        const hasExistingBid = uniqueBidders.some(bid => bid.userId === userId);
+        if (uniqueBidders.length >= auction.maxParticipants && !hasExistingBid) {
             return { valid: false, error: 'Maximum participants reached' };
         }
     }

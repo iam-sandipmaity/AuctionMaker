@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { createBid } from '@/lib/db/bids';
-import { updateAuctionPrice } from '@/lib/db/auctions';
 import { validateBid } from '@/lib/auction/validation';
 import { z } from 'zod';
-import { Decimal } from '@prisma/client/runtime/library';
 import prisma from '@/lib/db/prisma';
 
 const bidSchema = z.object({
@@ -79,9 +77,13 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const validatedData = bidSchema.parse(body);
 
-        // Validate the bid
+        // Enforce two decimals for amount
+        const validatedData = bidSchema.parse({
+            ...body,
+            amount: Math.round(Number(body.amount) * 100) / 100,
+        });
+
         const validation = await validateBid(
             validatedData.auctionId,
             session.user.id,
@@ -96,52 +98,52 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create the bid
+        let resolvedTeamId = validatedData.teamId;
+        if (validatedData.playerId) {
+            const user = await prisma.user.findUnique({
+                where: { id: session.user.id },
+                select: {
+                    team: {
+                        select: {
+                            id: true,
+                            auctionId: true,
+                        },
+                    },
+                },
+            });
+
+            if (!user?.team || user.team.auctionId !== validatedData.auctionId) {
+                return NextResponse.json(
+                    { success: false, error: 'Join a team in this auction before bidding' },
+                    { status: 403 }
+                );
+            }
+
+            if (validatedData.teamId && validatedData.teamId !== user.team.id) {
+                return NextResponse.json(
+                    { success: false, error: 'You can only bid for your own team' },
+                    { status: 403 }
+                );
+            }
+
+            resolvedTeamId = user.team.id;
+        }
+
         const bid = await createBid({
             auctionId: validatedData.auctionId,
             userId: session.user.id,
             amount: validatedData.amount,
             playerId: validatedData.playerId,
-            teamId: validatedData.teamId,
+            teamId: resolvedTeamId,
         });
 
-        // Update auction current price
-        await updateAuctionPrice(
-            validatedData.auctionId,
-            new Decimal(validatedData.amount)
-        );
-
-        // Fetch full bid details with relations for WebSocket
-        const fullBid = await prisma.bid.findUnique({
-            where: { id: bid.id },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        username: true,
-                    },
-                },
-                team: {
-                    select: {
-                        id: true,
-                        name: true,
-                        shortName: true,
-                        color: true,
-                        budget: true,
-                    },
-                },
-            },
-        });
-
-        // Emit WebSocket event with full bid data
         const io = (global as any).io;
-        if (io && validatedData.playerId && fullBid) {
+        if (io && validatedData.playerId) {
             io.to(`auction:${validatedData.auctionId}`).emit('bid:placed', {
-                bid: fullBid,
+                bid,
                 playerId: validatedData.playerId,
             });
-            console.log('📢 Emitted bid:placed event to auction:', validatedData.auctionId);
+            console.log('Emitted bid:placed event to auction:', validatedData.auctionId);
         }
 
         return NextResponse.json({
