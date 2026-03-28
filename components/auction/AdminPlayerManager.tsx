@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/ToastProvider';
 import { buildSamplePlayersCsv, samplePlayers } from '@/lib/auction/samplePlayers';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
 import TeamLogoMark from '@/components/auction/TeamLogoMark';
 
 interface Player {
@@ -417,9 +418,17 @@ export default function AdminPlayerManager({
                         {unsoldPlayers.map((player) => (
                             <Card key={player.id} className="p-4">
                                 <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1">
+                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                        <PlayerAvatar
+                                            player={player}
+                                            size="md"
+                                            loadingStrategy="eager"
+                                            className="hidden sm:flex"
+                                        />
+                                        <div className="flex-1 min-w-0">
                                             <h5 className="font-mono font-bold">{player.name}</h5>
-                                        {player.role && <Badge status="active">{player.role}</Badge>}
+                                            {player.role && <Badge status="active">{player.role}</Badge>}
+                                        </div>
                                     </div>
                                     <button
                                         onClick={() => handleDelete(player.id)}
@@ -459,7 +468,14 @@ export default function AdminPlayerManager({
                                 className="p-4 opacity-75"
                                 style={player.team ? { borderColor: player.team.color } : undefined}
                             >
-                                <div className="mb-2">
+                                <div className="mb-2 flex items-start gap-3">
+                                    <PlayerAvatar
+                                        player={player}
+                                        size="md"
+                                        loadingStrategy="eager"
+                                        className="hidden sm:flex"
+                                    />
+                                    <div className="min-w-0">
                                     <h5 className="font-mono font-bold">{player.name}</h5>
                                     {player.role && <Badge status="active">{player.role}</Badge>}
                                     {player.team && (
@@ -475,6 +491,7 @@ export default function AdminPlayerManager({
                                             Prev Team: {player.previousTeamShortName}
                                         </p>
                                     )}
+                                    </div>
                                 </div>
                                 <div className="space-y-1 text-sm">
                                     <div className="flex justify-between">

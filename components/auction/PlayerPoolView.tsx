@@ -389,7 +389,14 @@ export default function PlayerPoolView({
                                 onClick={() => hasBids && fetchBidHistory(player)}
                             >
                                 <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1">
+                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                        <PlayerAvatar
+                                            player={player}
+                                            size="md"
+                                            loadingStrategy="eager"
+                                            className="hidden sm:flex"
+                                        />
+                                        <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                                             {player.isStarPlayer && <Badge status="live" className="text-xs px-2 py-0">STAR</Badge>}
                                             <h4 className="font-mono font-bold text-lg">{player.name}</h4>
@@ -410,6 +417,7 @@ export default function PlayerPoolView({
                                             )}
                                         </div>
                                         {player.role && <p className="font-mono text-xs text-muted mb-1">{player.role}</p>}
+                                        </div>
                                     </div>
 
                                     <div className="flex flex-col gap-1">

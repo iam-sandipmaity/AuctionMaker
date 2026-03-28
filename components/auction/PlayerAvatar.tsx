@@ -9,6 +9,7 @@ type PlayerAvatarProps = {
         avatarUrl?: string | null;
     };
     size?: 'sm' | 'md' | 'lg' | 'xl';
+    loadingStrategy?: 'eager' | 'lazy';
     className?: string;
 };
 
@@ -25,7 +26,12 @@ function getInitials(name: string) {
     return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || '').join('');
 }
 
-export default function PlayerAvatar({ player, size = 'md', className = '' }: PlayerAvatarProps) {
+export default function PlayerAvatar({
+    player,
+    size = 'md',
+    loadingStrategy = 'eager',
+    className = '',
+}: PlayerAvatarProps) {
     const [imageFailed, setImageFailed] = useState(false);
     const imageSrc = player.avatarUrl || player.imageUrl || '';
     const initials = useMemo(() => getInitials(player.name), [player.name]);
@@ -45,8 +51,9 @@ export default function PlayerAvatar({ player, size = 'md', className = '' }: Pl
                     src={imageSrc}
                     alt={`${player.name} avatar`}
                     className="h-full w-full object-cover"
-                    loading="lazy"
+                    loading={loadingStrategy}
                     decoding="async"
+                    fetchPriority={loadingStrategy === 'eager' ? 'high' : 'auto'}
                     onError={() => setImageFailed(true)}
                 />
             ) : (
