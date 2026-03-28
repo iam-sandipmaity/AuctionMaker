@@ -679,7 +679,7 @@ function buildEspnIplTeams(rows: string[][]) {
         .filter((team, index, array) => team.name && array.findIndex((candidate) => candidate.name === team.name) === index);
 }
 
-function buildEspnIplBattingStats(rows: string[][]) {
+function buildEspnIplBattingStats(rows: string[][]): PlayerCareerStats {
     const teamRows = extractEspnLeadingGroupRows(rows);
     if (teamRows.length === 0) {
         return buildEmptyBattingStats('IPL');
@@ -732,7 +732,7 @@ function buildEspnIplBattingStats(rows: string[][]) {
     };
 }
 
-function buildEspnIplBowlingStats(rows: string[][]) {
+function buildEspnIplBowlingStats(rows: string[][]): PlayerBowlingCareerStats {
     const teamRows = extractEspnLeadingGroupRows(rows);
     if (teamRows.length === 0) {
         return buildEmptyBowlingStats('IPL');
@@ -1111,10 +1111,11 @@ async function buildFallbackAttempts(playerName: string, baseCacheKeys: string[]
 
     if (espnEntryResult.status === 'fulfilled') {
         if (espnEntryResult.value) {
+            const espnEntry = espnEntryResult.value;
             attempts.push({
                 provider: 'espn',
-                cacheKeys: [...baseCacheKeys, `espn:${espnEntryResult.value.id}`],
-                load: () => fetchEspnCareerProfile(espnEntryResult.value.id, playerName),
+                cacheKeys: [...baseCacheKeys, `espn:${espnEntry.id}`],
+                load: () => fetchEspnCareerProfile(espnEntry.id, playerName),
             });
         }
     } else {
@@ -1157,10 +1158,11 @@ export async function fetchPlayerCareerProfile(playerName: string): Promise<Play
     }
 
     if (registeredSource?.espnCricinfo) {
+        const registeredEspnSource = registeredSource.espnCricinfo;
         directAttempts.push({
             provider: 'espn',
-            cacheKeys: [...baseCacheKeys, `espn:${registeredSource.espnCricinfo.id}`],
-            load: () => fetchEspnCareerProfile(registeredSource.espnCricinfo.id, playerName),
+            cacheKeys: [...baseCacheKeys, `espn:${registeredEspnSource.id}`],
+            load: () => fetchEspnCareerProfile(registeredEspnSource.id, playerName),
         });
     }
 
