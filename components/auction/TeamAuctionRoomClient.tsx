@@ -93,6 +93,24 @@ interface TeamAuctionRoomClientProps {
     };
 }
 
+type WorkspaceTab = 'auction' | 'teams' | 'players' | 'ai' | 'analytics';
+
+const WORKSPACE_TAB_OPTIONS: Array<{ id: WorkspaceTab; label: string }> = [
+    { id: 'auction', label: 'LIVE AUCTION' },
+    { id: 'players', label: 'PLAYER POOL' },
+    { id: 'teams', label: 'TEAMS' },
+    { id: 'ai', label: 'AI ANALYZER' },
+    { id: 'analytics', label: 'ANALYTICS' },
+];
+
+const DESKTOP_SPLIT_MIN = 28;
+const DESKTOP_SPLIT_MAX = 72;
+
+const clampSplitRatio = (value: number) => Math.min(DESKTOP_SPLIT_MAX, Math.max(DESKTOP_SPLIT_MIN, value));
+
+const getWorkspaceTabLabel = (tabId: WorkspaceTab) =>
+    WORKSPACE_TAB_OPTIONS.find((option) => option.id === tabId)?.label ?? 'WORKSPACE';
+
 export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoomClientProps) {
     const { data: session, status: sessionStatus } = useSession();
     const { socket, isConnected } = useSocket(initialAuction.id);
@@ -105,7 +123,12 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     const [loading, setLoading] = useState(false);
     const [bidAmount, setBidAmount] = useState('');
     const [bidError, setBidError] = useState('');
-    const [tab, setTab] = useState<'auction' | 'teams' | 'players' | 'ai'>('auction');
+    const [tab, setTab] = useState<WorkspaceTab>('auction');
+    const [isSplitView, setIsSplitView] = useState(false);
+    const [primarySplitTab, setPrimarySplitTab] = useState<WorkspaceTab>('auction');
+    const [secondarySplitTab, setSecondarySplitTab] = useState<WorkspaceTab>('ai');
+    const [desktopSplitRatio, setDesktopSplitRatio] = useState(50);
+    const [isDraggingDesktopSplit, setIsDraggingDesktopSplit] = useState(false);
     const [selectedTeamForSquad, setSelectedTeamForSquad] = useState<Team | null>(null);
     const [showReconnecting, setShowReconnecting] = useState(false);
     const [rtmState, setRtmState] = useState<RtmState | null>(null);
@@ -113,6 +136,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     const [rtmOfferAmount, setRtmOfferAmount] = useState('');
     const [rtmOfferError, setRtmOfferError] = useState('');
     const trackedViewKeyRef = useRef('');
+    const splitWorkspaceRef = useRef<HTMLDivElement | null>(null);
 
     const isAdmin = session?.user?.id === auction.createdById;
     const currentPlayer = players.find((player) => player.isCurrentlyAuctioning) || null;
@@ -189,6 +213,47 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
     useEffect(() => {
         setShowReconnecting(auction.status === 'LIVE' && !isConnected);
     }, [auction.status, isConnected]);
+
+    useEffect(() => {
+        if (!isSplitView || !isDraggingDesktopSplit) return;
+
+        const updateDesktopSplitRatio = (clientX: number) => {
+            const splitWorkspace = splitWorkspaceRef.current;
+            if (!splitWorkspace) return;
+
+            const bounds = splitWorkspace.getBoundingClientRect();
+            if (bounds.width <= 0) return;
+
+            const nextRatio = ((clientX - bounds.left) / bounds.width) * 100;
+            setDesktopSplitRatio(clampSplitRatio(nextRatio));
+        };
+
+        const handleMouseMove = (event: MouseEvent) => {
+            updateDesktopSplitRatio(event.clientX);
+        };
+
+        const handleTouchMove = (event: TouchEvent) => {
+            if (!event.touches[0]) return;
+            event.preventDefault();
+            updateDesktopSplitRatio(event.touches[0].clientX);
+        };
+
+        const stopDragging = () => {
+            setIsDraggingDesktopSplit(false);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', stopDragging);
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', stopDragging);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', stopDragging);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', stopDragging);
+        };
+    }, [isDraggingDesktopSplit, isSplitView]);
 
     useEffect(() => {
         const pendingRtmStatus = auction.rtmStatus;
@@ -989,6 +1054,193 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         );
     }
 
+    const renderTeamsTabContent = (compact = false) => (
+        <div className={compact ? 'px-3 sm:px-4' : 'px-4 md:px-0'}>
+            <h3 className={`font-mono font-bold mb-4 ${compact ? 'text-sm sm:text-base' : 'text-base md:text-lg'}`}>TEAMS</h3>
+            <div className={`grid gap-3 md:gap-4 ${compact ? 'xl:grid-cols-1' : 'sm:grid-cols-2'}`}>
+                {teams.map((team) => (
+                    <Card key={team.id} className={`${compact ? 'p-3 sm:p-4' : 'p-4'} cursor-pointer hover:bg-accent/5 transition-colors`} style={{ borderColor: team.color }} onClick={() => setSelectedTeamForSquad(team)}>
+                        <p style={{ color: team.color }} className={`font-mono font-bold mb-1 ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`}>{team.shortName}</p>
+                        <p className="font-mono text-sm text-muted mb-3">{team.name}</p>
+                        <div className="space-y-1 text-sm">
+                            <div className="flex justify-between"><span className="font-mono text-muted">Budget:</span><span className="font-mono font-bold">{formatCurrency(team.budget)}</span></div>
+                            <div className="flex justify-between"><span className="font-mono text-muted">Squad:</span><span className="font-mono font-bold">{team.squadSize} players</span></div>
+                            <div className="flex justify-between"><span className="font-mono text-muted">RTM Cards:</span><span className="font-mono font-bold">{team.rtmCardsRemaining}</span></div>
+                            <div className="flex justify-between"><span className="font-mono text-muted">RTM Picks:</span><span className="font-mono font-bold">{team._count?.rtmSelections || 0}/{auction.maxRtmSelectionsPerTeam ?? 4}</span></div>
+                        </div>
+                        <p className="font-mono text-xs text-accent mt-2">Click to view squad</p>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderPlayersTabContent = (compact = false) => (
+        <div className={compact ? 'px-3 sm:px-4' : 'px-4 md:px-0'}>
+            <PlayerPoolView players={players} currency={auction.currency} budgetDenomination={auction.budgetDenomination} userTeamId={userTeam?.id} userTeamShortName={userTeam?.shortName} userTeamRtmCardsRemaining={userTeam?.rtmCardsRemaining} maxRtmSelectionsPerTeam={auction.maxRtmSelectionsPerTeam ?? 4} rtmCardsPerTeam={auction.rtmCardsPerTeam ?? 2} auctionStatus={auction.status} isAdmin={isAdmin} onToggleInterest={userTeam ? handleToggleInterest : undefined} onToggleRtm={userTeam ? handleToggleRtm : undefined} />
+        </div>
+    );
+
+    const renderAiTabContent = (compact = false) => (
+        <div className={compact ? 'px-3 sm:px-4' : ''}>
+            <AiAnalyzerPanel
+                auctionId={auction.id}
+                auction={{
+                    title: auction.title,
+                    currency: auction.currency,
+                    budgetDenomination: auction.budgetDenomination,
+                }}
+                teams={teams}
+                players={players.map((player) => ({
+                    id: player.id,
+                    name: player.name,
+                    role: player.role,
+                    previousTeamShortName: player.previousTeamShortName,
+                }))}
+                userTeamId={userTeam?.id}
+            />
+        </div>
+    );
+
+    const renderAnalyticsTabContent = (compact = false) => (
+        <div className={compact ? 'px-3 sm:px-4' : 'px-4 md:px-0'}>
+            <Card className={compact ? 'p-3 sm:p-4' : 'p-4 md:p-5 lg:p-6'}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <div>
+                        <h3 className={`font-mono font-bold ${compact ? 'text-base sm:text-lg' : 'text-lg'}`}>ANALYTICS</h3>
+                        <p className="font-mono text-xs text-muted">Live auction stats in a dedicated panel.</p>
+                    </div>
+                    <a href={`/auction/${auction.id}/stats`} target="_blank" rel="noopener noreferrer">
+                        <Button variant="secondary" className="w-full sm:w-auto">OPEN FULL PAGE</Button>
+                    </a>
+                </div>
+                <div className={`border-2 border-border bg-background overflow-hidden ${compact ? 'min-h-[50vh]' : 'min-h-[60vh]'}`}>
+                    <iframe
+                        src={`/auction/${auction.id}/stats`}
+                        title="Auction analytics"
+                        className={`w-full bg-background ${compact ? 'h-[50vh] md:h-[58vh]' : 'h-[60vh] md:h-[70vh]'}`}
+                        loading="lazy"
+                    />
+                </div>
+            </Card>
+        </div>
+    );
+
+    const renderAuctionTabContent = (compact = false) => (
+        <div className={compact ? 'grid gap-4 px-3 sm:px-4' : 'grid lg:grid-cols-3 gap-5 md:gap-6 lg:gap-8 px-4 lg:px-0'}>
+            <div className={compact ? 'space-y-4 order-1' : 'lg:col-span-2 space-y-4 md:space-y-5 lg:space-y-6 order-1'}>
+                {renderRtmBanner()}
+                {isAdmin ? (
+                    <AuctioneerControlPanel auctionId={auction.id} currentPlayer={currentPlayer} players={players} currentBids={currentPlayerBids} currency={auction.currency} budgetDenomination={auction.budgetDenomination} />
+                ) : currentPlayer ? (
+                    <Card className={compact ? 'p-4 sm:p-5' : 'p-5 md:p-6 lg:p-8'}>
+                        <div className="text-center mb-6">
+                            <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENT PLAYER</p>
+                            <h2 className={compact ? 'text-xl sm:text-2xl md:text-3xl mb-2' : 'text-2xl md:text-3xl lg:text-4xl mb-2'}>{currentPlayer.name}</h2>
+                            {currentPlayer.role && <Badge status="active">{currentPlayer.role}</Badge>}
+                            <p className="font-mono text-sm text-muted mt-3">{currentPlayer.description}</p>
+                        </div>
+                        {currentPlayerBids.length > 0 ? (
+                            <div className={`${compact ? 'text-center p-4 sm:p-5' : 'text-center p-4 md:p-5 lg:p-6'} border-3 border-accent bg-accent/10`}>
+                                <p className="font-mono text-xs md:text-sm text-muted mb-2">HIGHEST BID</p>
+                                <p className={compact ? 'font-mono text-3xl sm:text-4xl md:text-5xl font-bold text-accent mb-2' : 'font-mono text-4xl md:text-5xl lg:text-6xl font-bold text-accent mb-2'}>{formatCurrency(currentPlayerBids[0].amount)}</p>
+                                <p className={`font-mono font-bold ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`} style={{ color: currentPlayerBids[0].team?.color }}>{currentPlayerBids[0].team?.shortName}</p>
+                            </div>
+                        ) : (
+                            <div className={`${compact ? 'text-center p-4 sm:p-5' : 'text-center p-4 md:p-5 lg:p-6'} border-3 border-border`}>
+                                <p className="font-mono text-xs md:text-sm text-muted mb-2">BASE PRICE</p>
+                                <p className={compact ? 'font-mono text-3xl sm:text-4xl md:text-5xl font-bold' : 'font-mono text-4xl md:text-5xl lg:text-6xl font-bold'}>{formatCurrency(currentPlayer.basePrice)}</p>
+                                <p className="font-mono text-sm text-muted mt-2">No bids yet</p>
+                            </div>
+                        )}
+                    </Card>
+                ) : (
+                    <Card className={compact ? 'p-5 sm:p-6 text-center' : 'p-6 md:p-8 lg:p-12 text-center'}>
+                        <p className={compact ? 'font-mono text-sm sm:text-base md:text-lg text-muted' : 'font-mono text-base md:text-lg lg:text-xl text-muted'}>{rtmState ? 'Waiting for RTM decision...' : 'Waiting for auctioneer to start next player...'}</p>
+                    </Card>
+                )}
+                {!isAdmin && <div className="lg:hidden">{renderBidForm()}</div>}
+                <div>
+                    <h3 className={`font-mono font-bold mb-4 ${compact ? 'text-sm sm:text-base' : 'text-base md:text-lg'}`}>TEAMS</h3>
+                    <div className={`grid gap-3 md:gap-4 ${compact ? 'xl:grid-cols-1' : 'sm:grid-cols-2'}`}>
+                        {teams.map((team) => (
+                            <Card key={team.id} className={`${compact ? 'p-3 sm:p-4' : 'p-4'} cursor-pointer hover:bg-accent/5 transition-colors`} style={{ borderColor: team.color }} onClick={() => setSelectedTeamForSquad(team)}>
+                                <p style={{ color: team.color }} className={`font-mono font-bold mb-1 ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`}>{team.shortName}</p>
+                                <p className="font-mono text-sm text-muted mb-3">{team.name}</p>
+                                <div className="space-y-1 text-sm">
+                                    <div className="flex justify-between"><span className="font-mono text-muted">Budget:</span><span className="font-mono font-bold">{formatCurrency(team.budget)}</span></div>
+                                    <div className="flex justify-between"><span className="font-mono text-muted">Squad:</span><span className="font-mono font-bold">{team.squadSize} players</span></div>
+                                    <div className="flex justify-between"><span className="font-mono text-muted">RTM Cards:</span><span className="font-mono font-bold">{team.rtmCardsRemaining}</span></div>
+                                    <div className="flex justify-between"><span className="font-mono text-muted">RTM Picks:</span><span className="font-mono font-bold">{team._count?.rtmSelections || 0}/{auction.maxRtmSelectionsPerTeam ?? 4}</span></div>
+                                </div>
+                                <p className="font-mono text-xs text-accent mt-2">Click to view squad</p>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </div>
+            <div className={compact ? 'space-y-4 order-2' : 'space-y-4 md:space-y-5 lg:space-y-6 order-2 lg:order-3'}>
+                {!isAdmin && <div className="hidden lg:block">{renderBidForm()}</div>}
+                <Card className="p-6">
+                    <h3 className="mb-4">AUCTION STATS</h3>
+                    <div className="space-y-3">
+                        <div className="flex justify-between"><span className="font-mono text-sm text-muted">Teams:</span><span className="font-mono text-sm font-bold">{teams.length}</span></div>
+                        <div className="flex justify-between"><span className="font-mono text-sm text-muted">Players:</span><span className="font-mono text-sm font-bold">{players.length}</span></div>
+                        <div className="flex justify-between"><span className="font-mono text-sm text-muted">Sold:</span><span className="font-mono text-sm font-bold">{players.filter((player) => player.status === 'SOLD').length}</span></div>
+                        <div className="flex justify-between"><span className="font-mono text-sm text-muted">Unsold:</span><span className="font-mono text-sm font-bold">{players.filter((player) => player.status === 'UNSOLD').length}</span></div>
+                    </div>
+                </Card>
+            </div>
+        </div>
+    );
+
+    const renderWorkspaceTabContent = (activeTab: WorkspaceTab, compact = false) => {
+        switch (activeTab) {
+            case 'auction':
+                return renderAuctionTabContent(compact);
+            case 'players':
+                return renderPlayersTabContent(compact);
+            case 'teams':
+                return renderTeamsTabContent(compact);
+            case 'ai':
+                return renderAiTabContent(compact);
+            case 'analytics':
+                return renderAnalyticsTabContent(compact);
+            default:
+                return null;
+        }
+    };
+
+    const handleToggleSplitView = () => {
+        if (isSplitView) {
+            setIsSplitView(false);
+            setIsDraggingDesktopSplit(false);
+            return;
+        }
+
+        setPrimarySplitTab(tab);
+        if (secondarySplitTab === tab) {
+            const fallbackTab = WORKSPACE_TAB_OPTIONS.find((option) => option.id !== tab)?.id ?? 'ai';
+            setSecondarySplitTab(fallbackTab);
+        }
+        setIsSplitView(true);
+    };
+
+    const renderSplitPane = (activeTab: WorkspaceTab, positionLabel: string) => (
+        <Card
+            className="h-[62vh] md:h-[68vh] xl:h-full min-h-[32rem] p-0 overflow-hidden"
+            style={{ resize: 'vertical' as const }}
+        >
+            <div className="px-4 py-3 border-b-2 border-border bg-background/95">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">{positionLabel}</p>
+                <p className="font-mono text-sm font-bold mt-1">{getWorkspaceTabLabel(activeTab)}</p>
+            </div>
+            <div className="py-3 md:py-4 overflow-auto h-full">
+                {renderWorkspaceTabContent(activeTab, true)}
+            </div>
+        </Card>
+    );
+
     return (
         <div className="container section">
             {showReconnecting && (
@@ -1021,128 +1273,97 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                     </div>
                 )}
                 <div className="flex gap-2 mt-4 flex-wrap">
-                    <Button variant={tab === 'auction' ? 'primary' : 'secondary'} onClick={() => setTab('auction')} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">LIVE AUCTION</Button>
-                    <Button variant={tab === 'players' ? 'primary' : 'secondary'} onClick={() => setTab('players')} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">PLAYER POOL</Button>
-                    <Button variant={tab === 'teams' ? 'primary' : 'secondary'} onClick={() => setTab('teams')} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">TEAMS</Button>
-                    <Button variant={tab === 'ai' ? 'primary' : 'secondary'} onClick={() => setTab('ai')} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">AI ANALYZER</Button>
-                    <a href={`/auction/${auction.id}/stats`} target="_blank" rel="noopener noreferrer">
-                        <Button variant="secondary" className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">ANALYTICS</Button>
-                    </a>
+                    {WORKSPACE_TAB_OPTIONS.map((option) => (
+                        <Button
+                            key={option.id}
+                            variant={!isSplitView && tab === option.id ? 'primary' : 'secondary'}
+                            onClick={() => setTab(option.id)}
+                            className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2"
+                        >
+                            {option.label}
+                        </Button>
+                    ))}
+                    <Button variant={isSplitView ? 'primary' : 'secondary'} onClick={handleToggleSplitView} className="text-sm md:text-base px-3 md:px-5 lg:px-6 py-2">
+                        {isSplitView ? 'EXIT SPLIT SCREEN' : 'SPLIT SCREEN'}
+                    </Button>
                 </div>
+                {isSplitView && (
+                    <Card className="mt-4 p-4 md:p-5 border-accent/30 bg-accent/5">
+                        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                            <div>
+                                <p className="font-mono text-sm font-bold">SPLIT WORKSPACE</p>
+                                <p className="font-mono text-xs text-muted mt-1">Pick any two panels for the live room. On desktop you can drag the center divider to rebalance the layout, and on smaller screens each stacked panel can be stretched taller while keeping a tighter type scale for narrower widths.</p>
+                            </div>
+                            <p className="font-mono text-xs text-muted xl:text-right">
+                                Desktop split: {Math.round(desktopSplitRatio)}% / {Math.round(100 - desktopSplitRatio)}%
+                            </p>
+                        </div>
+                        <div className="grid lg:grid-cols-2 gap-4 mt-4">
+                            <label className="block">
+                                <p className="font-mono text-xs text-muted mb-2">LEFT / TOP PANEL</p>
+                                <select
+                                    value={primarySplitTab}
+                                    onChange={(event) => setPrimarySplitTab(event.target.value as WorkspaceTab)}
+                                    className="w-full p-3 border-2 border-border bg-background font-mono text-sm"
+                                >
+                                    {WORKSPACE_TAB_OPTIONS.map((option) => (
+                                        <option key={option.id} value={option.id}>{option.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="block">
+                                <p className="font-mono text-xs text-muted mb-2">RIGHT / BOTTOM PANEL</p>
+                                <select
+                                    value={secondarySplitTab}
+                                    onChange={(event) => setSecondarySplitTab(event.target.value as WorkspaceTab)}
+                                    className="w-full p-3 border-2 border-border bg-background font-mono text-sm"
+                                >
+                                    {WORKSPACE_TAB_OPTIONS.map((option) => (
+                                        <option key={option.id} value={option.id}>{option.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                    </Card>
+                )}
             </div>
 
-            {tab === 'auction' && (
-                <div className="grid lg:grid-cols-3 gap-5 md:gap-6 lg:gap-8 px-4 lg:px-0">
-                    <div className="lg:col-span-2 space-y-4 md:space-y-5 lg:space-y-6 order-1">
-                        {renderRtmBanner()}
-                        {isAdmin ? (
-                            <AuctioneerControlPanel auctionId={auction.id} currentPlayer={currentPlayer} players={players} currentBids={currentPlayerBids} currency={auction.currency} budgetDenomination={auction.budgetDenomination} />
-                        ) : currentPlayer ? (
-                            <Card className="p-5 md:p-6 lg:p-8">
-                                <div className="text-center mb-6">
-                                    <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENT PLAYER</p>
-                                    <h2 className="text-2xl md:text-3xl lg:text-4xl mb-2">{currentPlayer.name}</h2>
-                                    {currentPlayer.role && <Badge status="active">{currentPlayer.role}</Badge>}
-                                    <p className="font-mono text-sm text-muted mt-3">{currentPlayer.description}</p>
-                                </div>
-                                {currentPlayerBids.length > 0 ? (
-                                    <div className="text-center p-4 md:p-5 lg:p-6 border-3 border-accent bg-accent/10">
-                                        <p className="font-mono text-xs md:text-sm text-muted mb-2">HIGHEST BID</p>
-                                        <p className="font-mono text-4xl md:text-5xl lg:text-6xl font-bold text-accent mb-2">{formatCurrency(currentPlayerBids[0].amount)}</p>
-                                        <p className="font-mono text-xl font-bold" style={{ color: currentPlayerBids[0].team?.color }}>{currentPlayerBids[0].team?.shortName}</p>
-                                    </div>
-                                ) : (
-                                    <div className="text-center p-4 md:p-5 lg:p-6 border-3 border-border">
-                                        <p className="font-mono text-xs md:text-sm text-muted mb-2">BASE PRICE</p>
-                                        <p className="font-mono text-4xl md:text-5xl lg:text-6xl font-bold">{formatCurrency(currentPlayer.basePrice)}</p>
-                                        <p className="font-mono text-sm text-muted mt-2">No bids yet</p>
-                                    </div>
-                                )}
-                            </Card>
-                        ) : (
-                            <Card className="p-6 md:p-8 lg:p-12 text-center">
-                                <p className="font-mono text-base md:text-lg lg:text-xl text-muted">{rtmState ? 'Waiting for RTM decision...' : 'Waiting for auctioneer to start next player...'}</p>
-                            </Card>
-                        )}
-                        {!isAdmin && <div className="lg:hidden">{renderBidForm()}</div>}
-                        <div>
-                            <h3 className="font-mono text-base md:text-lg font-bold mb-4">TEAMS</h3>
-                            <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
-                                {teams.map((team) => (
-                                    <Card key={team.id} className="p-4 cursor-pointer hover:bg-accent/5 transition-colors" style={{ borderColor: team.color }} onClick={() => setSelectedTeamForSquad(team)}>
-                                        <p style={{ color: team.color }} className="font-mono text-xl font-bold mb-1">{team.shortName}</p>
-                                        <p className="font-mono text-sm text-muted mb-3">{team.name}</p>
-                                        <div className="space-y-1 text-sm">
-                                            <div className="flex justify-between"><span className="font-mono text-muted">Budget:</span><span className="font-mono font-bold">{formatCurrency(team.budget)}</span></div>
-                                            <div className="flex justify-between"><span className="font-mono text-muted">Squad:</span><span className="font-mono font-bold">{team.squadSize} players</span></div>
-                                            <div className="flex justify-between"><span className="font-mono text-muted">RTM Cards:</span><span className="font-mono font-bold">{team.rtmCardsRemaining}</span></div>
-                                            <div className="flex justify-between"><span className="font-mono text-muted">RTM Picks:</span><span className="font-mono font-bold">{team._count?.rtmSelections || 0}/{auction.maxRtmSelectionsPerTeam ?? 4}</span></div>
-                                        </div>
-                                        <p className="font-mono text-xs text-accent mt-2">Click to view squad</p>
-                                    </Card>
-                                ))}
+            {isSplitView ? (
+                <div className="px-4 lg:px-0">
+                    <div
+                        ref={splitWorkspaceRef}
+                        className={isDraggingDesktopSplit ? 'select-none' : undefined}
+                    >
+                        <div className="xl:hidden space-y-4">
+                            {renderSplitPane(primarySplitTab, 'LEFT / TOP PANEL')}
+                            {renderSplitPane(secondarySplitTab, 'RIGHT / BOTTOM PANEL')}
+                        </div>
+                        <div
+                            className="hidden xl:grid items-stretch min-h-[70vh]"
+                            style={{ gridTemplateColumns: `minmax(0, ${desktopSplitRatio}fr) 14px minmax(0, ${100 - desktopSplitRatio}fr)` }}
+                        >
+                            <div className="min-w-0 pr-2">
+                                {renderSplitPane(primarySplitTab, 'LEFT / TOP PANEL')}
+                            </div>
+                            <div className="flex items-stretch justify-center">
+                                <button
+                                    type="button"
+                                    aria-label="Resize split workspace"
+                                    onMouseDown={() => setIsDraggingDesktopSplit(true)}
+                                    onTouchStart={() => setIsDraggingDesktopSplit(true)}
+                                    className={`w-full rounded-full border-2 border-border bg-background/90 transition-colors cursor-col-resize ${isDraggingDesktopSplit ? 'border-accent bg-accent/15' : 'hover:border-accent/60 hover:bg-accent/10'}`}
+                                >
+                                    <span className="sr-only">Drag to resize panels</span>
+                                </button>
+                            </div>
+                            <div className="min-w-0 pl-2">
+                                {renderSplitPane(secondarySplitTab, 'RIGHT / BOTTOM PANEL')}
                             </div>
                         </div>
                     </div>
-                    <div className="space-y-4 md:space-y-5 lg:space-y-6 order-2 lg:order-3">
-                        {!isAdmin && <div className="hidden lg:block">{renderBidForm()}</div>}
-                        <Card className="p-6">
-                            <h3 className="mb-4">AUCTION STATS</h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between"><span className="font-mono text-sm text-muted">Teams:</span><span className="font-mono text-sm font-bold">{teams.length}</span></div>
-                                <div className="flex justify-between"><span className="font-mono text-sm text-muted">Players:</span><span className="font-mono text-sm font-bold">{players.length}</span></div>
-                                <div className="flex justify-between"><span className="font-mono text-sm text-muted">Sold:</span><span className="font-mono text-sm font-bold">{players.filter((player) => player.status === 'SOLD').length}</span></div>
-                                <div className="flex justify-between"><span className="font-mono text-sm text-muted">Unsold:</span><span className="font-mono text-sm font-bold">{players.filter((player) => player.status === 'UNSOLD').length}</span></div>
-                            </div>
-                        </Card>
-                    </div>
                 </div>
-            )}
-
-            {tab === 'players' && (
-                <div className="px-4 md:px-0">
-                    <PlayerPoolView players={players} currency={auction.currency} budgetDenomination={auction.budgetDenomination} userTeamId={userTeam?.id} userTeamShortName={userTeam?.shortName} userTeamRtmCardsRemaining={userTeam?.rtmCardsRemaining} maxRtmSelectionsPerTeam={auction.maxRtmSelectionsPerTeam ?? 4} rtmCardsPerTeam={auction.rtmCardsPerTeam ?? 2} auctionStatus={auction.status} isAdmin={isAdmin} onToggleInterest={userTeam ? handleToggleInterest : undefined} onToggleRtm={userTeam ? handleToggleRtm : undefined} />
-                </div>
-            )}
-
-            {tab === 'teams' && (
-                <div className="px-4 md:px-0">
-                    <h3 className="font-mono text-base md:text-lg font-bold mb-4">TEAMS</h3>
-                    <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
-                        {teams.map((team) => (
-                            <Card key={team.id} className="p-4 cursor-pointer hover:bg-accent/5 transition-colors" style={{ borderColor: team.color }} onClick={() => setSelectedTeamForSquad(team)}>
-                                <p style={{ color: team.color }} className="font-mono text-xl font-bold mb-1">{team.shortName}</p>
-                                <p className="font-mono text-sm text-muted mb-3">{team.name}</p>
-                                <div className="space-y-1 text-sm">
-                                    <div className="flex justify-between"><span className="font-mono text-muted">Budget:</span><span className="font-mono font-bold">{formatCurrency(team.budget)}</span></div>
-                                    <div className="flex justify-between"><span className="font-mono text-muted">Squad:</span><span className="font-mono font-bold">{team.squadSize} players</span></div>
-                                    <div className="flex justify-between"><span className="font-mono text-muted">RTM Cards:</span><span className="font-mono font-bold">{team.rtmCardsRemaining}</span></div>
-                                    <div className="flex justify-between"><span className="font-mono text-muted">RTM Picks:</span><span className="font-mono font-bold">{team._count?.rtmSelections || 0}/{auction.maxRtmSelectionsPerTeam ?? 4}</span></div>
-                                </div>
-                                <p className="font-mono text-xs text-accent mt-2">Click to view squad</p>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {tab === 'ai' && (
-                <AiAnalyzerPanel
-                    auctionId={auction.id}
-                    auction={{
-                        title: auction.title,
-                        currency: auction.currency,
-                        budgetDenomination: auction.budgetDenomination,
-                    }}
-                    teams={teams}
-                    players={players.map((player) => ({
-                        id: player.id,
-                        name: player.name,
-                        role: player.role,
-                        previousTeamShortName: player.previousTeamShortName,
-                    }))}
-                    userTeamId={userTeam?.id}
-                />
+            ) : (
+                renderWorkspaceTabContent(tab)
             )}
 
             {selectedTeamForSquad && (
