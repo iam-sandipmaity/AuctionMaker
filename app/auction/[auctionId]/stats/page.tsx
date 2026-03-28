@@ -299,7 +299,7 @@ export default function AuctionStatsPage() {
         );
     }
 
-    const { overview, teamStats, roleStats, priceRanges, mostExpensivePlayers, teamSpendingComparison, insights } = stats;
+    const { overview, teamStats, roleStats, mostExpensivePlayers, teamSpendingComparison, insights } = stats;
 
     return (
         <div className="min-h-screen bg-[var(--background)] py-8 px-4">
@@ -450,7 +450,6 @@ export default function AuctionStatsPage() {
                         {/* Risk Alert */}
                         {(() => {
                             const atRiskTeams = teamStats.filter(team => {
-                                const avgNeeded = team.slotsRemaining > 0 ? team.remainingBudget / team.slotsRemaining : 0;
                                 const minNeeded = team.playersNeeded;
                                 return minNeeded > 0 && (team.remainingBudget < minNeeded * overview.averagePlayerPrice * 0.5);
                             });
@@ -685,7 +684,7 @@ export default function AuctionStatsPage() {
                                             <div className="mt-2 pt-2 border-t border-[var(--border)]">
                                                 <span className="text-yellow-400">
                                                     ⚠ Missing: {Object.entries(team.roleDistribution)
-                                                        .filter(([_, count]) => count === 0)
+                                                        .filter(([, count]) => count === 0)
                                                         .map(([role]) => role.slice(0, 3))
                                                         .join(', ')}
                                                 </span>

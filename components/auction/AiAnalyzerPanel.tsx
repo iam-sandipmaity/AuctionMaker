@@ -21,11 +21,6 @@ interface Team {
 
 interface AiAnalyzerPanelProps {
     auctionId: string;
-    auction: {
-        title: string;
-        currency: string;
-        budgetDenomination?: string;
-    };
     teams: Team[];
     players: PlayerCareerOption[];
     userTeamId?: string | null;
@@ -80,7 +75,7 @@ function sanitizeChatMessages(messages: ChatMessage[]) {
         .filter((message) => message.text.length > 0);
 }
 
-export default function AiAnalyzerPanel({ auctionId, auction, teams, players, userTeamId }: AiAnalyzerPanelProps) {
+export default function AiAnalyzerPanel({ auctionId, teams, players, userTeamId }: AiAnalyzerPanelProps) {
     const { showToast } = useToast();
     const [mode, setMode] = useState<'team' | 'player'>('team');
     const [selectedTeamId, setSelectedTeamId] = useState('');

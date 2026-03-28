@@ -244,6 +244,7 @@ export default function AdminPlayerManager({
                             <li>Required fields: `name`, `base price`</li>
                             <li>Optional fields: `description`, `role`, `avatar url`, `marquee set`, `previous team short name`</li>
                             <li>Previous team short name must match a team short name like `CSK` or `RCB`</li>
+                            <li>Use blank or `none` if the player has no previous franchise association</li>
                             <li>Players are sorted by marquee tier during import</li>
                         </ul>
                         <div className="flex gap-2 mt-3">

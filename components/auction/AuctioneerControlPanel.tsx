@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
@@ -86,48 +86,59 @@ export default function AuctioneerControlPanel({
     const [randomSelection, setRandomSelection] = useState(false);
     const [randomPlayerId, setRandomPlayerId] = useState<string | null>(null);
 
-    const unsoldPlayers = players.filter(p => p.status === 'UNSOLD' && !p.isCurrentlyAuctioning);
-    
-    // Separate players by tier
-    const tier1to3Players = unsoldPlayers.filter(p => (p.marqueeSet || 5) <= 3);
-    const tier4to5Players = unsoldPlayers.filter(p => (p.marqueeSet || 5) >= 4);
-    
-    // For tier 4-5, only show players with team interest
-    const tier4to5WithInterest = tier4to5Players.filter(p => 
-        p.interestedTeams && p.interestedTeams.length > 0
+    const unsoldPlayers = useMemo(
+        () => players.filter((player) => player.status === 'UNSOLD' && !player.isCurrentlyAuctioning),
+        [players]
     );
-    
-    // Combined list for auctioneer: all tier 1-3 + interested tier 4-5
-    let playersToAuction = [...tier1to3Players, ...tier4to5WithInterest];
 
-    // Apply filters
-    if (tierFilter !== 'all') {
-        playersToAuction = playersToAuction.filter(p => (p.marqueeSet || 5) === tierFilter);
-    }
-    if (roleFilter !== 'all') {
-        playersToAuction = playersToAuction.filter(p => p.role === roleFilter);
-    }
-    if (showShortlistedOnly) {
-        playersToAuction = playersToAuction.filter(p => 
-            p.interestedTeams && p.interestedTeams.length > 0
-        );
-    }
-    if (showUnsoldOnly) {
-        // Show only players that went unsold but now have team interest (second chance)
-        playersToAuction = playersToAuction.filter(p => 
-            p.status === 'UNSOLD' && 
-            p.hasBeenAuctioned === true && // Player was previously auctioned
-            p.interestedTeams && 
-            p.interestedTeams.length > 0
-        );
-    }
+    const auctionablePlayerCounts = useMemo(() => {
+        const tier1to3Count = unsoldPlayers.filter((player) => (player.marqueeSet || 5) <= 3).length;
+        const tier4to5PlayersCount = unsoldPlayers.filter((player) => (player.marqueeSet || 5) >= 4).length;
+        const tier4to5WithInterestCount = unsoldPlayers.filter(
+            (player) => (player.marqueeSet || 5) >= 4 && Boolean(player.interestedTeams && player.interestedTeams.length > 0)
+        ).length;
 
-    // Sort by tier
-    playersToAuction.sort((a, b) => {
-        const tierA = a.marqueeSet || 5;
-        const tierB = b.marqueeSet || 5;
-        return tierA - tierB;
-    });
+        return {
+            tier1to3Count,
+            tier4to5PlayersCount,
+            tier4to5WithInterestCount,
+        };
+    }, [unsoldPlayers]);
+
+    const playersToAuction = useMemo(() => {
+        const tier1to3Players = unsoldPlayers.filter((player) => (player.marqueeSet || 5) <= 3);
+        const tier4to5WithInterest = unsoldPlayers.filter(
+            (player) => (player.marqueeSet || 5) >= 4 && Boolean(player.interestedTeams && player.interestedTeams.length > 0)
+        );
+
+        let nextPlayersToAuction = [...tier1to3Players, ...tier4to5WithInterest];
+
+        if (tierFilter !== 'all') {
+            nextPlayersToAuction = nextPlayersToAuction.filter((player) => (player.marqueeSet || 5) === tierFilter);
+        }
+        if (roleFilter !== 'all') {
+            nextPlayersToAuction = nextPlayersToAuction.filter((player) => player.role === roleFilter);
+        }
+        if (showShortlistedOnly) {
+            nextPlayersToAuction = nextPlayersToAuction.filter(
+                (player) => Boolean(player.interestedTeams && player.interestedTeams.length > 0)
+            );
+        }
+        if (showUnsoldOnly) {
+            nextPlayersToAuction = nextPlayersToAuction.filter(
+                (player) =>
+                    player.status === 'UNSOLD'
+                    && player.hasBeenAuctioned === true
+                    && Boolean(player.interestedTeams && player.interestedTeams.length > 0)
+            );
+        }
+
+        return nextPlayersToAuction.sort((firstPlayer, secondPlayer) => {
+            const tierA = firstPlayer.marqueeSet || 5;
+            const tierB = secondPlayer.marqueeSet || 5;
+            return tierA - tierB;
+        });
+    }, [roleFilter, showShortlistedOnly, showUnsoldOnly, tierFilter, unsoldPlayers]);
 
     // Use effect to handle random player selection to avoid infinite loop
     useEffect(() => {
@@ -142,12 +153,14 @@ export default function AuctioneerControlPanel({
             // Reset random player when random selection is turned off
             setRandomPlayerId(null);
         }
-    }, [randomSelection, playersToAuction.length, randomPlayerId]);
+    }, [randomSelection, playersToAuction, randomPlayerId]);
 
-    // Apply random selection filter after determining the random player
-    if (randomSelection && randomPlayerId) {
-        playersToAuction = playersToAuction.filter(p => p.id === randomPlayerId);
-    }
+    const visiblePlayersToAuction = useMemo(
+        () => (randomSelection && randomPlayerId
+            ? playersToAuction.filter((player) => player.id === randomPlayerId)
+            : playersToAuction),
+        [playersToAuction, randomPlayerId, randomSelection]
+    );
 
     // Get unique roles for filter
     const availableRoles = Array.from(new Set(unsoldPlayers.map(p => p.role).filter(Boolean))) as string[];
@@ -373,7 +386,7 @@ export default function AuctioneerControlPanel({
             </Card>
 
             {/* Available Players */}
-            {(tier1to3Players.length > 0 || tier4to5WithInterest.length > 0) && (
+            {(auctionablePlayerCounts.tier1to3Count > 0 || auctionablePlayerCounts.tier4to5WithInterestCount > 0) && (
                 <div>
                     {/* Filter Controls */}
                     <Card className="p-4 mb-4">
@@ -464,7 +477,7 @@ export default function AuctioneerControlPanel({
                         {/* Filter Summary */}
                         <div className="mt-3 p-2 bg-accent/10 border-2 border-accent/20">
                             <p className="font-mono text-xs text-muted">
-                                Showing: {playersToAuction.length} players
+                                Showing: {visiblePlayersToAuction.length} players
                                 {tierFilter !== 'all' && ` | Tier ${tierFilter}`}
                                 {roleFilter !== 'all' && ` | ${roleFilter}`}
                                 {showShortlistedOnly && ' | Shortlisted only'}
@@ -479,16 +492,16 @@ export default function AuctioneerControlPanel({
                             Showing: All Tier 1-3 players + Tier 4-5 players shortlisted by teams
                         </p>
                         <p className="font-mono text-xs text-muted mt-1">
-                            {tier1to3Players.length} marquee players | {tier4to5WithInterest.length} shortlisted lower-tier
+                            {auctionablePlayerCounts.tier1to3Count} marquee players | {auctionablePlayerCounts.tier4to5WithInterestCount} shortlisted lower-tier
                         </p>
                     </div>
                     
                     <h4 className="font-mono text-base md:text-lg font-bold mb-3">
-                        NEXT PLAYERS ({playersToAuction.length})
+                        NEXT PLAYERS ({visiblePlayersToAuction.length})
                     </h4>
                     <div className="grid md:grid-cols-2 gap-3 md:gap-3 lg:gap-3">
-                        {playersToAuction.length > 0 ? (
-                            playersToAuction.map((player) => {
+                        {visiblePlayersToAuction.length > 0 ? (
+                            visiblePlayersToAuction.map((player) => {
                                 const interestedCount = player.interestedTeams?.length || 0;
                                 const tierLabel = ['T1', 'T2', 'T3', 'T4', 'T5'][(player.marqueeSet || 5) - 1];
                                 
@@ -556,12 +569,12 @@ export default function AuctioneerControlPanel({
                 </div>
             )}
 
-            {(tier1to3Players.length === 0 && tier4to5WithInterest.length === 0) && !currentPlayer && (
+            {(auctionablePlayerCounts.tier1to3Count === 0 && auctionablePlayerCounts.tier4to5WithInterestCount === 0) && !currentPlayer && (
                 <div className="text-center py-12">
                     <p className="font-mono text-muted">All eligible players have been auctioned!</p>
-                    {tier4to5Players.length > tier4to5WithInterest.length && (
+                    {auctionablePlayerCounts.tier4to5PlayersCount > auctionablePlayerCounts.tier4to5WithInterestCount && (
                         <p className="font-mono text-xs text-muted mt-2">
-                            ({tier4to5Players.length - tier4to5WithInterest.length} tier 4-5 players not shortlisted by any team)
+                            ({auctionablePlayerCounts.tier4to5PlayersCount - auctionablePlayerCounts.tier4to5WithInterestCount} tier 4-5 players not shortlisted by any team)
                         </p>
                     )}
                 </div>

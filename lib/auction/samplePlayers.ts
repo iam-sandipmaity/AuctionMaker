@@ -59,6 +59,7 @@ export const samplePlayers: SamplePlayer[] = [
     { name: 'Deepak Chahar', description: 'Indian fast bowler', role: 'Bowler', basePrice: 1.5, marqueeSet: 2, previousTeamShortName: 'CSK' },
     { name: 'Bhuvneshwar Kumar', description: 'Indian fast bowler', role: 'Bowler', basePrice: 1.5, marqueeSet: 2, previousTeamShortName: 'SRH' },
     { name: 'Tilak Varma', description: 'Indian batsman', role: 'Batsman', basePrice: 1.5, marqueeSet: 1, previousTeamShortName: 'MI' },
+    { name: 'Glenn Phillips', description: 'New Zealand power-hitting all-rounder', role: 'All-rounder', basePrice: 1, marqueeSet: 3, previousTeamShortName: 'none' },
 ];
 
 function escapeCsvValue(value: string | number | undefined) {
