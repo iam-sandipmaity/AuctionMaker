@@ -27,6 +27,16 @@ const updatePlayerSchema = z.object({
     previousTeamShortName: z.string().max(5).optional(),
 });
 
+function normalizePreviousTeamShortName(value?: string | null) {
+    const normalizedValue = value?.trim().toUpperCase();
+
+    if (!normalizedValue || normalizedValue === 'NONE' || normalizedValue === 'NULL' || normalizedValue === 'N/A') {
+        return null;
+    }
+
+    return normalizedValue;
+}
+
 // Get players for an auction
 export async function GET(request: NextRequest) {
     try {
@@ -154,7 +164,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const normalizedPreviousTeamShortName = validatedData.previousTeamShortName?.trim().toUpperCase();
+        const normalizedPreviousTeamShortName = normalizePreviousTeamShortName(validatedData.previousTeamShortName);
         if (normalizedPreviousTeamShortName) {
             const matchingTeam = await prisma.team.findFirst({
                 where: {
@@ -260,7 +270,7 @@ export async function PATCH(request: NextRequest) {
         }
 
         if (validatedData.previousTeamShortName !== undefined) {
-            const normalizedPreviousTeamShortName = validatedData.previousTeamShortName?.trim().toUpperCase();
+            const normalizedPreviousTeamShortName = normalizePreviousTeamShortName(validatedData.previousTeamShortName);
 
             if (normalizedPreviousTeamShortName) {
                 const matchingTeam = await prisma.team.findFirst({
@@ -287,7 +297,7 @@ export async function PATCH(request: NextRequest) {
         if (validatedData.basePrice) updateData.basePrice = new Decimal(validatedData.basePrice);
         if (validatedData.imageUrl) updateData.imageUrl = validatedData.imageUrl;
         if (validatedData.previousTeamShortName !== undefined) {
-            updateData.previousTeamShortName = validatedData.previousTeamShortName?.trim().toUpperCase() || null;
+            updateData.previousTeamShortName = normalizePreviousTeamShortName(validatedData.previousTeamShortName);
         }
 
         const updatedPlayer = await prisma.player.update({

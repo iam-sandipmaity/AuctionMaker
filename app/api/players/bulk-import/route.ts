@@ -14,6 +14,16 @@ interface PlayerImportData {
     previousTeamShortName?: string;
 }
 
+function normalizePreviousTeamShortName(value?: string | null) {
+    const normalizedValue = value?.trim().toUpperCase();
+
+    if (!normalizedValue || normalizedValue === 'NONE' || normalizedValue === 'NULL' || normalizedValue === 'N/A') {
+        return null;
+    }
+
+    return normalizedValue;
+}
+
 export async function POST(request: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
@@ -131,7 +141,8 @@ export async function POST(request: NextRequest) {
             if (player.marqueeSet && (player.marqueeSet < 1 || player.marqueeSet > 5)) {
                 validationErrors.push(`Row ${index + 1}: Marquee set must be between 1-5`);
             }
-            if (player.previousTeamShortName && validTeamShortNames.size > 0 && !validTeamShortNames.has(player.previousTeamShortName.trim().toUpperCase())) {
+            const normalizedPreviousTeamShortName = normalizePreviousTeamShortName(player.previousTeamShortName);
+            if (normalizedPreviousTeamShortName && validTeamShortNames.size > 0 && !validTeamShortNames.has(normalizedPreviousTeamShortName)) {
                 validationErrors.push(
                     `Row ${index + 1}: Previous team short name "${player.previousTeamShortName}" does not match any team in this auction. Valid team short names: ${validTeamsLabel}`
                 );
@@ -173,7 +184,7 @@ export async function POST(request: NextRequest) {
                         avatarUrl: player.avatarUrl?.trim() || null,
                         marqueeSet: player.marqueeSet || 5,
                         isStarPlayer: player.isStarPlayer || false,
-                        previousTeamShortName: player.previousTeamShortName?.trim().toUpperCase() || null,
+                        previousTeamShortName: normalizePreviousTeamShortName(player.previousTeamShortName),
                         status: 'UNSOLD',
                         isCurrentlyAuctioning: false,
                         auctionOrder: currentOrder,
@@ -292,7 +303,7 @@ function parseCSV(content: string): PlayerImportData[] {
                     const val = values[index].toLowerCase();
                     player[field] = val === 'true' || val === 'yes' || val === '1';
                 } else if (field === 'previousTeamShortName') {
-                    player[field] = values[index].toUpperCase();
+                    player[field] = normalizePreviousTeamShortName(values[index]) ?? undefined;
                 } else {
                     player[field] = values[index];
                 }

@@ -301,6 +301,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         setRtmState(null);
     }, [
         auction.rtmStatus,
+        auction.currentPrice,
         auction.pendingRtmPlayerId,
         auction.pendingRtmEligibleTeamId,
         auction.pendingRtmWinningTeamId,
@@ -1085,11 +1086,6 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
         <div className={compact ? 'px-3 sm:px-4' : ''}>
             <AiAnalyzerPanel
                 auctionId={auction.id}
-                auction={{
-                    title: auction.title,
-                    currency: auction.currency,
-                    budgetDenomination: auction.budgetDenomination,
-                }}
                 teams={teams}
                 players={players.map((player) => ({
                     id: player.id,
