@@ -1147,39 +1147,44 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 {isAdmin ? (
                     <AuctioneerControlPanel auctionId={auction.id} currentPlayer={currentPlayer} players={players} currentBids={currentPlayerBids} currency={auction.currency} budgetDenomination={auction.budgetDenomination} />
                 ) : currentPlayer ? (
-                    <Card className={compact ? 'p-4 sm:p-5' : 'p-5 md:p-6 lg:p-8'}>
-                        <div className="mb-6 flex flex-col items-center text-center">
-                            <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENT PLAYER</p>
-                            <PlayerAvatar player={currentPlayer} size={compact ? 'lg' : 'xl'} className="mb-3" />
-                            <h2 className={compact ? 'text-xl sm:text-2xl md:text-3xl mb-2' : 'text-2xl md:text-3xl lg:text-4xl mb-2'}>{currentPlayer.name}</h2>
-                            {currentPlayer.role && <Badge status="active">{currentPlayer.role}</Badge>}
-                            <p className="font-mono text-sm text-muted mt-3">{currentPlayer.description}</p>
-                        </div>
-                        {currentPlayerBids.length > 0 ? (
-                            <div className={`${compact ? 'text-center p-4 sm:p-5' : 'text-center p-4 md:p-5 lg:p-6'} border-3 border-accent bg-accent/10`}>
-                                <p className="font-mono text-xs md:text-sm text-muted mb-2">HIGHEST BID</p>
-                                <p className={compact ? 'font-mono text-3xl sm:text-4xl md:text-5xl font-bold text-accent mb-2' : 'font-mono text-4xl md:text-5xl lg:text-6xl font-bold text-accent mb-2'}>{formatCurrency(currentPlayerBids[0].amount)}</p>
-                                {currentPlayerBids[0].team && (
-                                    <div className="flex items-center justify-center gap-3">
-                                        <TeamLogoMark team={currentPlayerBids[0].team} size={compact ? 'md' : 'lg'} />
-                                        <p className={`font-mono font-bold ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`} style={{ color: currentPlayerBids[0].team?.color }}>{currentPlayerBids[0].team?.shortName}</p>
-                                    </div>
-                                )}
+                    <>
+                        <Card className={compact ? 'p-4 sm:p-5' : 'p-5 md:p-6 lg:p-8'}>
+                            <div className="mb-6 flex flex-col items-center text-center">
+                                <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENT PLAYER</p>
+                                <PlayerAvatar player={currentPlayer} size={compact ? 'lg' : 'xl'} className="mb-3" />
+                                <h2 className={compact ? 'text-xl sm:text-2xl md:text-3xl mb-2' : 'text-2xl md:text-3xl lg:text-4xl mb-2'}>{currentPlayer.name}</h2>
+                                {currentPlayer.role && <Badge status="active">{currentPlayer.role}</Badge>}
+                                <p className="font-mono text-sm text-muted mt-3">{currentPlayer.description}</p>
                             </div>
-                        ) : (
-                            <div className={`${compact ? 'text-center p-4 sm:p-5' : 'text-center p-4 md:p-5 lg:p-6'} border-3 border-border`}>
-                                <p className="font-mono text-xs md:text-sm text-muted mb-2">BASE PRICE</p>
-                                <p className={compact ? 'font-mono text-3xl sm:text-4xl md:text-5xl font-bold' : 'font-mono text-4xl md:text-5xl lg:text-6xl font-bold'}>{formatCurrency(currentPlayer.basePrice)}</p>
-                                <p className="font-mono text-sm text-muted mt-2">No bids yet</p>
-                            </div>
-                        )}
-                    </Card>
+                            {currentPlayerBids.length > 0 ? (
+                                <div className={`${compact ? 'text-center p-4 sm:p-5' : 'text-center p-4 md:p-5 lg:p-6'} border-3 border-accent bg-accent/10`}>
+                                    <p className="font-mono text-xs md:text-sm text-muted mb-2">HIGHEST BID</p>
+                                    <p className={compact ? 'font-mono text-3xl sm:text-4xl md:text-5xl font-bold text-accent mb-2' : 'font-mono text-4xl md:text-5xl lg:text-6xl font-bold text-accent mb-2'}>{formatCurrency(currentPlayerBids[0].amount)}</p>
+                                    {currentPlayerBids[0].team && (
+                                        <div className="flex items-center justify-center gap-3">
+                                            <TeamLogoMark team={currentPlayerBids[0].team} size={compact ? 'md' : 'lg'} />
+                                            <p className={`font-mono font-bold ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`} style={{ color: currentPlayerBids[0].team?.color }}>{currentPlayerBids[0].team?.shortName}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className={`${compact ? 'text-center p-4 sm:p-5' : 'text-center p-4 md:p-5 lg:p-6'} border-3 border-border`}>
+                                    <p className="font-mono text-xs md:text-sm text-muted mb-2">BASE PRICE</p>
+                                    <p className={compact ? 'font-mono text-3xl sm:text-4xl md:text-5xl font-bold' : 'font-mono text-4xl md:text-5xl lg:text-6xl font-bold'}>{formatCurrency(currentPlayer.basePrice)}</p>
+                                    <p className="font-mono text-sm text-muted mt-2">No bids yet</p>
+                                </div>
+                            )}
+                        </Card>
+                        {/* Place Bid form directly after current player in split/compact view */}
+                        {!isAdmin && compact && renderBidForm()}
+                    </>
                 ) : (
                     <Card className={compact ? 'p-5 sm:p-6 text-center' : 'p-6 md:p-8 lg:p-12 text-center'}>
                         <p className={compact ? 'font-mono text-sm sm:text-base md:text-lg text-muted' : 'font-mono text-base md:text-lg lg:text-xl text-muted'}>{rtmState ? 'Waiting for RTM decision...' : 'Waiting for auctioneer to start next player...'}</p>
                     </Card>
                 )}
-                {!isAdmin && <div className="lg:hidden">{renderBidForm()}</div>}
+                {/* Place Bid form in normal (non-compact) view, or for legacy fallback */}
+                {!isAdmin && !compact && <div className="lg:hidden">{renderBidForm()}</div>}
                 <div>
                     <h3 className={`font-mono font-bold mb-4 ${compact ? 'text-sm sm:text-base' : 'text-base md:text-lg'}`}>TEAMS</h3>
                     <div className={`grid gap-3 md:gap-4 ${compact ? 'xl:grid-cols-1' : 'sm:grid-cols-2'}`}>
@@ -1205,7 +1210,8 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 </div>
             </div>
             <div className={compact ? 'space-y-4 order-2' : 'space-y-4 md:space-y-5 lg:space-y-6 order-2 lg:order-3'}>
-                {!isAdmin && <div className="hidden lg:block">{renderBidForm()}</div>}
+                {/* Place Bid form in sidebar for large screens (non-compact) */}
+                {!isAdmin && compact === false && <div className="hidden lg:block">{renderBidForm()}</div>}
                 <Card className="p-6">
                     <h3 className="mb-4">AUCTION STATS</h3>
                     <div className="space-y-3">
