@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
+import TeamLogoMark from '@/components/auction/TeamLogoMark';
 
 interface Player {
     id: string;
@@ -13,6 +15,7 @@ interface Player {
     basePrice: number;
     soldPrice?: number;
     status: 'UNSOLD' | 'SOLD';
+    imageUrl?: string;
     avatarUrl?: string;
     marqueeSet?: number;
     isStarPlayer?: boolean;
@@ -24,12 +27,14 @@ interface Player {
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
     };
     interestedTeams?: {
         team: {
             id: string;
             shortName: string;
             color: string;
+            logo?: string | null;
         };
     }[];
     rtmSelections?: {
@@ -37,6 +42,7 @@ interface Player {
             id: string;
             shortName: string;
             color: string;
+            logo?: string | null;
             rtmCardsRemaining?: number;
         };
     }[];
@@ -70,6 +76,7 @@ interface Bid {
             name: string;
             shortName: string;
             color: string;
+            logo?: string | null;
         };
     };
     team?: {
@@ -77,6 +84,7 @@ interface Bid {
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
     };
 }
 
@@ -426,9 +434,12 @@ export default function PlayerPoolView({
                                     {player.team && (
                                         <div className="text-right">
                                             <p className="font-mono text-xs text-muted">Sold To</p>
-                                            <p className="font-mono font-bold" style={{ color: player.team.color }}>
-                                                {player.team.shortName}
-                                            </p>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <TeamLogoMark team={player.team} size="sm" />
+                                                <p className="font-mono font-bold" style={{ color: player.team.color }}>
+                                                    {player.team.shortName}
+                                                </p>
+                                            </div>
                                             <p className="font-mono text-xs text-accent">{Number(player.soldPrice).toFixed(2)} {currency}</p>
                                         </div>
                                     )}
@@ -443,12 +454,13 @@ export default function PlayerPoolView({
                                             {player.interestedTeams?.map((interest) => (
                                                 <span
                                                     key={interest.team.id}
-                                                    className="font-mono text-xs font-bold px-2 py-1"
+                                                    className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-1"
                                                     style={{
                                                         color: interest.team.color,
                                                         border: `2px solid ${interest.team.color}`,
                                                     }}
                                                 >
+                                                    <TeamLogoMark team={interest.team} size="sm" className="h-5 w-5 text-[8px]" />
                                                     {interest.team.shortName}
                                                 </span>
                                             ))}
@@ -508,9 +520,12 @@ export default function PlayerPoolView({
                     <Card className="max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
                         <div className="p-6">
                             <div className="flex items-start justify-between mb-6">
-                                <div>
+                                <div className="flex items-center gap-3">
+                                    <PlayerAvatar player={selectedPlayerForBids} size="lg" />
+                                    <div>
                                     <h3 className="font-mono text-2xl font-bold">{selectedPlayerForBids.name}</h3>
                                     <p className="font-mono text-sm text-muted mt-1">Bid History</p>
+                                    </div>
                                 </div>
                                 <Button variant="secondary" onClick={closeBidModal}>
                                     CLOSE
@@ -526,9 +541,14 @@ export default function PlayerPoolView({
                                     {playerBids.map((bid, index) => (
                                         <div key={bid.id} className="flex items-center justify-between p-3 border-2 border-border">
                                             <div>
-                                                <p className="font-mono font-bold">
-                                                    #{playerBids.length - index} {bid.team?.shortName || bid.user.team?.shortName || bid.user.name}
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    {(bid.team || bid.user.team) && (
+                                                        <TeamLogoMark team={bid.team || bid.user.team!} size="sm" />
+                                                    )}
+                                                    <p className="font-mono font-bold">
+                                                        #{playerBids.length - index} {bid.team?.shortName || bid.user.team?.shortName || bid.user.name}
+                                                    </p>
+                                                </div>
                                                 <p className="font-mono text-xs text-muted">
                                                     {new Date(bid.timestamp).toLocaleString()}
                                                 </p>

@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
 import { useToast } from '@/components/ui/ToastProvider';
+import TeamLogoMark from '@/components/auction/TeamLogoMark';
 
 interface Player {
     id: string;
@@ -15,6 +17,8 @@ interface Player {
     soldPrice?: number;
     status: 'UNSOLD' | 'SOLD';
     isCurrentlyAuctioning: boolean;
+    imageUrl?: string;
+    avatarUrl?: string;
     marqueeSet?: number;
     isStarPlayer?: boolean;
     hasBeenAuctioned?: boolean;
@@ -23,12 +27,14 @@ interface Player {
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
     };
     interestedTeams?: {
         team: {
             id: string;
             shortName: string;
             color: string;
+            logo?: string | null;
         };
     }[];
 }
@@ -47,6 +53,7 @@ interface Bid {
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
     } | null;
 }
 
@@ -293,13 +300,18 @@ export default function AuctioneerControlPanel({
                     <div className="space-y-4">
                         <div className="p-4 md:p-4 lg:p-4 border-3 border-border">
                             <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENTLY AUCTIONING</p>
-                            <h4 className="font-mono text-xl md:text-2xl font-bold mb-2">{currentPlayer.name}</h4>
-                            {currentPlayer.role && (
-                                <Badge status="active">{currentPlayer.role}</Badge>
-                            )}
-                            <p className="font-mono text-sm text-muted mt-2">
-                                {currentPlayer.description}
-                            </p>
+                            <div className="flex items-start gap-4">
+                                <PlayerAvatar player={currentPlayer} size="lg" />
+                                <div className="flex-1">
+                                    <h4 className="font-mono text-xl md:text-2xl font-bold mb-2">{currentPlayer.name}</h4>
+                                    {currentPlayer.role && (
+                                        <Badge status="active">{currentPlayer.role}</Badge>
+                                    )}
+                                    <p className="font-mono text-sm text-muted mt-2">
+                                        {currentPlayer.description}
+                                    </p>
+                                </div>
+                            </div>
                             <div className="mt-3 flex justify-between items-center">
                                 <span className="font-mono text-sm text-muted">Base Price:</span>
                                 <span className="font-mono font-bold">
@@ -312,20 +324,26 @@ export default function AuctioneerControlPanel({
                             <div className="p-4 md:p-4 lg:p-4 border-3 border-accent bg-accent/5">
                                 <p className="font-mono text-xs md:text-sm text-muted mb-2">HIGHEST BID</p>
                                 <div className="flex items-center justify-between mb-2">
-                                    <div>
-                                        <p 
-                                            className="font-mono text-lg md:text-xl font-bold"
-                                            style={{ color: highestBid.team?.color }}
-                                        >
-                                            {highestBid.team?.shortName || highestBid.user?.username || 'Unknown'}
-                                        </p>
+                                    <div className="flex items-center gap-3">
+                                        {highestBid.team && <TeamLogoMark team={highestBid.team} size="md" />}
+                                        <div>
+                                            <p 
+                                                className="font-mono text-lg md:text-xl font-bold"
+                                                style={{ color: highestBid.team?.color }}
+                                            >
+                                                {highestBid.team?.shortName || highestBid.user?.username || 'Unknown'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
                                         <p className="font-mono text-xs md:text-sm text-muted">
                                             @{highestBid.user?.username || 'unknown'}
                                         </p>
-                                    </div>
+                                    
                                     <p className="font-mono text-2xl md:text-3xl font-bold text-accent">
                                         {formatCurrency(highestBid.amount)}
                                     </p>
+                                    </div>
                                 </div>
                             </div>
                         ) : (
@@ -363,9 +381,12 @@ export default function AuctioneerControlPanel({
                                             key={bid.id}
                                             className="p-2 border-2 border-border text-sm font-mono flex justify-between"
                                         >
-                                            <span style={{ color: bid.team?.color }}>
-                                                {bid.team?.shortName || bid.user?.username || 'Unknown'}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                {bid.team && <TeamLogoMark team={bid.team} size="sm" />}
+                                                <span style={{ color: bid.team?.color }}>
+                                                    {bid.team?.shortName || bid.user?.username || 'Unknown'}
+                                                </span>
+                                            </div>
                                             <span>{formatCurrency(bid.amount)}</span>
                                         </div>
                                     ))}
@@ -529,12 +550,13 @@ export default function AuctioneerControlPanel({
                                                             {player.interestedTeams?.map((it) => (
                                                                 <span
                                                                     key={it.team.id}
-                                                                    className="font-mono text-xs px-2 py-0.5 border-2"
+                                                                    className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 border-2"
                                                                     style={{ 
                                                                         borderColor: it.team.color,
                                                                         color: it.team.color,
                                                                     }}
                                                                 >
+                                                                    <TeamLogoMark team={it.team} size="sm" className="h-5 w-5 text-[8px]" />
                                                                     {it.team.shortName}
                                                                 </span>
                                                             ))}

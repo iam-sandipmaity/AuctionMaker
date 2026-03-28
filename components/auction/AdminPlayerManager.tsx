@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/ToastProvider';
 import { buildSamplePlayersCsv, samplePlayers } from '@/lib/auction/samplePlayers';
+import TeamLogoMark from '@/components/auction/TeamLogoMark';
 
 interface Player {
     id: string;
@@ -17,12 +18,14 @@ interface Player {
     soldPrice?: number;
     status: 'UNSOLD' | 'SOLD';
     imageUrl?: string;
+    avatarUrl?: string;
     previousTeamShortName?: string | null;
     team?: {
         id: string;
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
     };
 }
 
@@ -415,7 +418,7 @@ export default function AdminPlayerManager({
                             <Card key={player.id} className="p-4">
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1">
-                                        <h5 className="font-mono font-bold">{player.name}</h5>
+                                            <h5 className="font-mono font-bold">{player.name}</h5>
                                         {player.role && <Badge status="active">{player.role}</Badge>}
                                     </div>
                                     <button
@@ -460,9 +463,12 @@ export default function AdminPlayerManager({
                                     <h5 className="font-mono font-bold">{player.name}</h5>
                                     {player.role && <Badge status="active">{player.role}</Badge>}
                                     {player.team && (
-                                        <p className="font-mono text-sm font-bold mt-1" style={{ color: player.team.color }}>
-                                            {player.team.shortName}
-                                        </p>
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <TeamLogoMark team={player.team} size="sm" />
+                                            <p className="font-mono text-sm font-bold" style={{ color: player.team.color }}>
+                                                {player.team.shortName}
+                                            </p>
+                                        </div>
                                     )}
                                     {player.previousTeamShortName && (
                                         <p className="font-mono text-xs text-muted mt-1">

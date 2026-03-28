@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
                         name: true,
                         shortName: true,
                         color: true,
+                        logo: true,
                     },
                 },
                 interestedTeams: {
@@ -101,6 +102,7 @@ export async function GET(request: NextRequest) {
                                 id: true,
                                 shortName: true,
                                 color: true,
+                                logo: true,
                                 rtmCardsRemaining: true,
                             },
                         },
@@ -198,6 +200,7 @@ export async function POST(request: NextRequest) {
                 role: validatedData.role,
                 basePrice: new Decimal(validatedData.basePrice),
                 imageUrl: validatedData.imageUrl,
+                avatarUrl: validatedData.imageUrl,
                 previousTeamShortName: normalizedPreviousTeamShortName || null,
                 auctionId: validatedData.auctionId,
                 auctionOrder,
@@ -295,7 +298,10 @@ export async function PATCH(request: NextRequest) {
         if (validatedData.description) updateData.description = validatedData.description;
         if (validatedData.role) updateData.role = validatedData.role;
         if (validatedData.basePrice) updateData.basePrice = new Decimal(validatedData.basePrice);
-        if (validatedData.imageUrl) updateData.imageUrl = validatedData.imageUrl;
+        if (validatedData.imageUrl) {
+            updateData.imageUrl = validatedData.imageUrl;
+            updateData.avatarUrl = validatedData.imageUrl;
+        }
         if (validatedData.previousTeamShortName !== undefined) {
             updateData.previousTeamShortName = normalizePreviousTeamShortName(validatedData.previousTeamShortName);
         }
