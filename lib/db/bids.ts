@@ -57,6 +57,7 @@ export async function createBid(data: {
                         name: true,
                         shortName: true,
                         color: true,
+                        logo: true,
                         budget: true,
                     },
                 },

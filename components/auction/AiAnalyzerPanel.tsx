@@ -7,12 +7,14 @@ import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import { useToast } from '@/components/ui/ToastProvider';
 import PlayerCareerPanel, { PlayerCareerOption } from '@/components/auction/PlayerCareerPanel';
+import TeamLogoMark from '@/components/auction/TeamLogoMark';
 
 interface Team {
     id: string;
     name: string;
     shortName: string;
     color: string;
+    logo?: string | null;
     budget: number;
     totalBudget: number;
     squadSize: number;
@@ -317,8 +319,20 @@ export default function AiAnalyzerPanel({ auctionId, teams, players, userTeamId 
                 </div>
                 {(selectedTeam || comparisonTeam) && (
                     <div className="mt-4 flex flex-wrap gap-3 font-mono text-sm text-muted">
-                        {selectedTeam && <span>Focus: <span className="font-bold" style={{ color: selectedTeam.color }}>{selectedTeam.shortName}</span></span>}
-                        {comparisonTeam && <span>Compare: <span className="font-bold" style={{ color: comparisonTeam.color }}>{comparisonTeam.shortName}</span></span>}
+                        {selectedTeam && (
+                            <span className="inline-flex items-center gap-2">
+                                Focus:
+                                <TeamLogoMark team={selectedTeam} size="sm" />
+                                <span className="font-bold" style={{ color: selectedTeam.color }}>{selectedTeam.shortName}</span>
+                            </span>
+                        )}
+                        {comparisonTeam && (
+                            <span className="inline-flex items-center gap-2">
+                                Compare:
+                                <TeamLogoMark team={comparisonTeam} size="sm" />
+                                <span className="font-bold" style={{ color: comparisonTeam.color }}>{comparisonTeam.shortName}</span>
+                            </span>
+                        )}
                         <span>Style: <span className="font-bold">{teamBuildPreference.replace(/_/g, ' ')}</span></span>
                         <span>Pitch: <span className="font-bold">{pitchType.replace(/_/g, ' ')}</span></span>
                         <span>Dew: <span className="font-bold">{dewFactor}</span></span>

@@ -49,6 +49,7 @@ type TeamSocketData = {
     name: string;
     shortName: string;
     color: string;
+    logo?: string | null;
     budget: number;
     squadSize: number;
     rtmCardsRemaining: number;
@@ -59,6 +60,7 @@ function toTeamSocketData(team: {
     name: string;
     shortName: string;
     color: string;
+    logo?: string | null;
     budget: any;
     squadSize: number;
     rtmCardsRemaining: number;
@@ -68,6 +70,7 @@ function toTeamSocketData(team: {
         name: team.name,
         shortName: team.shortName,
         color: team.color,
+        logo: team.logo || null,
         budget: Number(team.budget),
         squadSize: team.squadSize,
         rtmCardsRemaining: team.rtmCardsRemaining,
@@ -267,6 +270,7 @@ async function handleStartPlayerAuction(body: any, userId: string) {
                     name: true,
                     shortName: true,
                     color: true,
+                    logo: true,
                 },
             },
         },
@@ -379,6 +383,7 @@ async function handleEndPlayerAuction(body: any, userId: string) {
                     name: true,
                     shortName: true,
                     color: true,
+                    logo: true,
                     budget: true,
                     squadSize: true,
                     rtmCardsRemaining: true,
@@ -1013,6 +1018,7 @@ async function getUserWithTeam(userId: string) {
                     name: true,
                     shortName: true,
                     color: true,
+                    logo: true,
                     budget: true,
                     squadSize: true,
                     rtmCardsRemaining: true,
@@ -1044,6 +1050,7 @@ async function getPendingRtmAuction(auctionId: string) {
                     name: true,
                     shortName: true,
                     color: true,
+                    logo: true,
                     budget: true,
                     squadSize: true,
                     rtmCardsRemaining: true,
@@ -1055,6 +1062,7 @@ async function getPendingRtmAuction(auctionId: string) {
                     name: true,
                     shortName: true,
                     color: true,
+                    logo: true,
                     budget: true,
                     squadSize: true,
                     rtmCardsRemaining: true,
@@ -1096,6 +1104,7 @@ function emitRtmActivated({
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
         budget: any;
         squadSize: number;
         rtmCardsRemaining: number;
@@ -1105,6 +1114,7 @@ function emitRtmActivated({
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
         budget: any;
         squadSize: number;
         rtmCardsRemaining: number;
@@ -1143,6 +1153,7 @@ function emitRtmCountered({
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
         budget: any;
         squadSize: number;
         rtmCardsRemaining: number;
@@ -1152,6 +1163,7 @@ function emitRtmCountered({
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
         budget: any;
         squadSize: number;
         rtmCardsRemaining: number;

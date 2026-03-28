@@ -5,6 +5,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { useToast } from '@/components/ui/ToastProvider';
+import TeamLogoMark from '@/components/auction/TeamLogoMark';
 
 interface Team {
     id: string;
@@ -159,16 +160,16 @@ export default function AdminTeamManager({
 
     const downloadSampleCSV = () => {
         const csvContent = `name,short name,color,logo
-Mumbai Indians,MI,#004BA0,https://example.com/mi.png
-Chennai Super Kings,CSK,#FDB913,https://example.com/csk.png
-Royal Challengers Bangalore,RCB,#EC1C24,
-Kolkata Knight Riders,KKR,#3A225D,
-Delhi Capitals,DC,#282968,
-Rajasthan Royals,RR,#254AA5,
-Punjab Kings,PBKS,#ED1B24,
-Sunrisers Hyderabad,SRH,#FF822A,
-Gujarat Titans,GT,#1C2841,
-Lucknow Super Giants,LSG,#4E9ED9,`;
+Mumbai Indians,MI,#004BA0,https://i.pinimg.com/1200x/28/09/a8/2809a841bb08827603ccac5c6aee8b33.jpg
+Chennai Super Kings,CSK,#FDB913,https://i.pinimg.com/736x/9c/67/62/9c676289f4272fa53b950963dca14f90.jpg
+Kolkata Knight Riders,KKR,#3A225D,https://i.pinimg.com/736x/55/29/ec/5529ec8094b4744dd916f9f415aeee09.jpg
+Rajasthan Royals,RR,#EA1A85,https://i.pinimg.com/1200x/44/b9/d2/44b9d2d691b2346d6a7c2a492f105dd1.jpg
+Sunrisers Hyderabad,SRH,#FF822A,https://i.pinimg.com/1200x/8c/2d/32/8c2d32435d35b247c72c179a4dd924c6.jpg
+Royal Challengers Bangalore,RCB,#EC1C24,https://i.pinimg.com/736x/29/72/0c/29720cad681366547f74abde220181ed.jpg
+Punjab Kings,PBKS,#D71920,https://i.pinimg.com/1200x/48/4f/d8/484fd8fe48afb7267575789a8006f54f.jpg
+Gujarat Titans,GT,#1C1C1C,https://i.pinimg.com/736x/67/86/23/6786234261ee69f0eff405cb4c4a9abb.jpg
+Lucknow Super Giants,LSG,#A72056,https://i.pinimg.com/736x/0b/83/7e/0b837ee110654e157b207ab10f1aa1a3.jpg
+Delhi Capitals,DC,#282968,https://i.pinimg.com/736x/a4/87/26/a48726809d1115236c20842dc781ae55.jpg`;
 
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -185,52 +186,61 @@ Lucknow Super Giants,LSG,#4E9ED9,`;
                 name: "Mumbai Indians",
                 shortName: "MI",
                 color: "#004BA0",
-                logo: "https://example.com/mi.png"
+                logo: "https://i.pinimg.com/1200x/28/09/a8/2809a841bb08827603ccac5c6aee8b33.jpg"
             },
             {
                 name: "Chennai Super Kings",
                 shortName: "CSK",
-                color: "#FDB913"
-            },
-            {
-                name: "Royal Challengers Bangalore",
-                shortName: "RCB",
-                color: "#EC1C24"
+                color: "#FDB913",
+                logo: "https://i.pinimg.com/736x/9c/67/62/9c676289f4272fa53b950963dca14f90.jpg"
             },
             {
                 name: "Kolkata Knight Riders",
                 shortName: "KKR",
-                color: "#3A225D"
-            },
-            {
-                name: "Delhi Capitals",
-                shortName: "DC",
-                color: "#282968"
+                color: "#3A225D",
+                logo: "https://i.pinimg.com/736x/55/29/ec/5529ec8094b4744dd916f9f415aeee09.jpg"
             },
             {
                 name: "Rajasthan Royals",
                 shortName: "RR",
-                color: "#254AA5"
-            },
-            {
-                name: "Punjab Kings",
-                shortName: "PBKS",
-                color: "#ED1B24"
+                color: "#EA1A85",
+                logo: "https://i.pinimg.com/1200x/44/b9/d2/44b9d2d691b2346d6a7c2a492f105dd1.jpg"
             },
             {
                 name: "Sunrisers Hyderabad",
                 shortName: "SRH",
-                color: "#FF822A"
+                color: "#FF822A",
+                logo: "https://i.pinimg.com/1200x/8c/2d/32/8c2d32435d35b247c72c179a4dd924c6.jpg"
+            },
+            {
+                name: "Royal Challengers Bangalore",
+                shortName: "RCB",
+                color: "#EC1C24",
+                logo: "https://i.pinimg.com/736x/29/72/0c/29720cad681366547f74abde220181ed.jpg"
+            },
+            {
+                name: "Punjab Kings",
+                shortName: "PBKS",
+                color: "#D71920",
+                logo: "https://i.pinimg.com/1200x/48/4f/d8/484fd8fe48afb7267575789a8006f54f.jpg"
             },
             {
                 name: "Gujarat Titans",
                 shortName: "GT",
-                color: "#1C2841"
+                color: "#1C1C1C",
+                logo: "https://i.pinimg.com/736x/67/86/23/6786234261ee69f0eff405cb4c4a9abb.jpg"
             },
             {
                 name: "Lucknow Super Giants",
                 shortName: "LSG",
-                color: "#4E9ED9"
+                color: "#A72056",
+                logo: "https://i.pinimg.com/736x/0b/83/7e/0b837ee110654e157b207ab10f1aa1a3.jpg"
+            },
+            {
+                name: "Delhi Capitals",
+                shortName: "DC",
+                color: "#282968",
+                logo: "https://i.pinimg.com/736x/a4/87/26/a48726809d1115236c20842dc781ae55.jpg"
             }
         ];
 
@@ -420,14 +430,17 @@ Lucknow Super Giants,LSG,#4E9ED9,`;
                         style={{ borderColor: team.color }}
                     >
                         <div className="flex items-start justify-between mb-3">
-                            <div>
-                                <h4 
-                                    className="font-mono text-lg font-bold"
-                                    style={{ color: team.color }}
-                                >
-                                    {team.shortName}
-                                </h4>
-                                <p className="font-mono text-sm text-muted">{team.name}</p>
+                            <div className="flex items-start gap-3">
+                                <TeamLogoMark team={team} size="md" />
+                                <div>
+                                    <h4 
+                                        className="font-mono text-lg font-bold"
+                                        style={{ color: team.color }}
+                                    >
+                                        {team.shortName}
+                                    </h4>
+                                    <p className="font-mono text-sm text-muted">{team.name}</p>
+                                </div>
                             </div>
                             {team.squadSize === 0 && (
                                 <button

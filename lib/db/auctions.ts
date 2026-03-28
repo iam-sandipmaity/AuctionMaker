@@ -114,6 +114,7 @@ export async function getAuctionById(id: string) {
                             name: true,
                             shortName: true,
                             color: true,
+                            logo: true,
                         },
                     },
                 },

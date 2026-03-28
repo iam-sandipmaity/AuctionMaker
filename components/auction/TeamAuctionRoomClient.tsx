@@ -12,6 +12,8 @@ import AdminPlayerManager from '@/components/auction/AdminPlayerManager';
 import AuctioneerControlPanel from '@/components/auction/AuctioneerControlPanel';
 import PlayerPoolView from '@/components/auction/PlayerPoolView';
 import AiAnalyzerPanel from '@/components/auction/AiAnalyzerPanel';
+import PlayerAvatar from '@/components/auction/PlayerAvatar';
+import TeamLogoMark from '@/components/auction/TeamLogoMark';
 import { AuctionWithBids } from '@/types';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -38,6 +40,7 @@ interface Player {
     soldPrice?: number;
     status: 'UNSOLD' | 'SOLD';
     isCurrentlyAuctioning: boolean;
+    imageUrl?: string;
     avatarUrl?: string;
     marqueeSet?: number;
     isStarPlayer?: boolean;
@@ -48,12 +51,14 @@ interface Player {
         name: string;
         shortName: string;
         color: string;
+        logo?: string | null;
     };
     interestedTeams?: {
         team: {
             id: string;
             shortName: string;
             color: string;
+            logo?: string | null;
         };
     }[];
     rtmSelections?: {
@@ -61,6 +66,7 @@ interface Player {
             id: string;
             shortName: string;
             color: string;
+            logo?: string | null;
             rtmCardsRemaining?: number;
         };
     }[];
@@ -72,8 +78,8 @@ interface RtmState {
     playerName: string;
     originalAmount: number;
     currentAmount: number;
-    eligibleTeam: Pick<Team, 'id' | 'name' | 'shortName' | 'color' | 'budget' | 'squadSize' | 'rtmCardsRemaining'>;
-    winningTeam: Pick<Team, 'id' | 'name' | 'shortName' | 'color' | 'budget' | 'squadSize' | 'rtmCardsRemaining'>;
+    eligibleTeam: Pick<Team, 'id' | 'name' | 'shortName' | 'color' | 'logo' | 'budget' | 'squadSize' | 'rtmCardsRemaining'>;
+    winningTeam: Pick<Team, 'id' | 'name' | 'shortName' | 'color' | 'logo' | 'budget' | 'squadSize' | 'rtmCardsRemaining'>;
 }
 
 interface TeamAuctionRoomClientProps {
@@ -577,7 +583,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                             ...player,
                             interestedTeams: currentlyInterested
                                 ? player.interestedTeams?.filter((interest) => interest.team.id !== userTeam.id)
-                                : [...(player.interestedTeams || []), { team: { id: userTeam.id, shortName: userTeam.shortName, color: userTeam.color } }],
+                                : [...(player.interestedTeams || []), { team: { id: userTeam.id, shortName: userTeam.shortName, color: userTeam.color, logo: userTeam.logo } }],
                         }
                         : player
                 )
@@ -611,7 +617,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                             ...player,
                             rtmSelections: currentlySelected
                                 ? player.rtmSelections?.filter((selection) => selection.team.id !== userTeam.id)
-                                : [...(player.rtmSelections || []), { team: { id: userTeam.id, shortName: userTeam.shortName, color: userTeam.color, rtmCardsRemaining: userTeam.rtmCardsRemaining } }],
+                                : [...(player.rtmSelections || []), { team: { id: userTeam.id, shortName: userTeam.shortName, color: userTeam.color, logo: userTeam.logo, rtmCardsRemaining: userTeam.rtmCardsRemaining } }],
                         }
                         : player
                 )
@@ -885,9 +891,12 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                     <div className="grid sm:grid-cols-2 gap-4">
                         <div className="p-4 border-2 border-border">
                             <p className="font-mono text-xs text-muted mb-1">CURRENT WINNER</p>
-                            <p className="font-mono text-xl font-bold" style={{ color: rtmState.winningTeam.color }}>
-                                {rtmState.winningTeam.shortName}
-                            </p>
+                            <div className="flex items-center gap-3">
+                                <TeamLogoMark team={rtmState.winningTeam} size="md" />
+                                <p className="font-mono text-xl font-bold" style={{ color: rtmState.winningTeam.color }}>
+                                    {rtmState.winningTeam.shortName}
+                                </p>
+                            </div>
                             {rtmState.status === 'AWAITING_WINNING_TEAM_COUNTER' && (
                                 <p className="font-mono text-xs text-muted mt-1">
                                     Must quote a higher retention price
@@ -901,9 +910,12 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                         </div>
                         <div className="p-4 border-2 border-border">
                             <p className="font-mono text-xs text-muted mb-1">RTM ELIGIBLE TEAM</p>
-                            <p className="font-mono text-xl font-bold" style={{ color: rtmState.eligibleTeam.color }}>
-                                {rtmState.eligibleTeam.shortName}
-                            </p>
+                            <div className="flex items-center gap-3">
+                                <TeamLogoMark team={rtmState.eligibleTeam} size="md" />
+                                <p className="font-mono text-xl font-bold" style={{ color: rtmState.eligibleTeam.color }}>
+                                    {rtmState.eligibleTeam.shortName}
+                                </p>
+                            </div>
                             <p className="font-mono text-xs text-muted mt-1">
                                 RTM cards left: {rtmState.eligibleTeam.rtmCardsRemaining}
                             </p>
@@ -1034,6 +1046,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                                             <label key={team.id} className={`flex items-center justify-between p-4 border-3 cursor-pointer hover:border-accent transition-colors ${isOccupied ? 'opacity-50 cursor-not-allowed' : ''} ${selectedTeamId === team.id ? 'border-accent bg-accent/10' : 'border-border'}`}>
                                                 <div className="flex items-center gap-4">
                                                     <input type="radio" name="team" value={team.id} checked={selectedTeamId === team.id} onChange={(e) => setSelectedTeamId(e.target.value)} disabled={isOccupied} className="w-5 h-5" />
+                                                    <TeamLogoMark team={team} size="lg" />
                                                     <div>
                                                         <p className="font-mono text-xl font-bold" style={{ color: team.color }}>{team.shortName}</p>
                                                         <p className="font-mono text-sm">{team.name}</p>
@@ -1061,8 +1074,13 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
             <div className={`grid gap-3 md:gap-4 ${compact ? 'xl:grid-cols-1' : 'sm:grid-cols-2'}`}>
                 {teams.map((team) => (
                     <Card key={team.id} className={`${compact ? 'p-3 sm:p-4' : 'p-4'} cursor-pointer hover:bg-accent/5 transition-colors`} style={{ borderColor: team.color }} onClick={() => setSelectedTeamForSquad(team)}>
-                        <p style={{ color: team.color }} className={`font-mono font-bold mb-1 ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`}>{team.shortName}</p>
-                        <p className="font-mono text-sm text-muted mb-3">{team.name}</p>
+                        <div className="mb-3 flex items-start gap-3">
+                            <TeamLogoMark team={team} size={compact ? 'md' : 'lg'} />
+                            <div>
+                                <p style={{ color: team.color }} className={`font-mono font-bold mb-1 ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`}>{team.shortName}</p>
+                                <p className="font-mono text-sm text-muted">{team.name}</p>
+                            </div>
+                        </div>
                         <div className="space-y-1 text-sm">
                             <div className="flex justify-between"><span className="font-mono text-muted">Budget:</span><span className="font-mono font-bold">{formatCurrency(team.budget)}</span></div>
                             <div className="flex justify-between"><span className="font-mono text-muted">Squad:</span><span className="font-mono font-bold">{team.squadSize} players</span></div>
@@ -1130,8 +1148,9 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                     <AuctioneerControlPanel auctionId={auction.id} currentPlayer={currentPlayer} players={players} currentBids={currentPlayerBids} currency={auction.currency} budgetDenomination={auction.budgetDenomination} />
                 ) : currentPlayer ? (
                     <Card className={compact ? 'p-4 sm:p-5' : 'p-5 md:p-6 lg:p-8'}>
-                        <div className="text-center mb-6">
+                        <div className="mb-6 flex flex-col items-center text-center">
                             <p className="font-mono text-xs md:text-sm text-muted mb-2">CURRENT PLAYER</p>
+                            <PlayerAvatar player={currentPlayer} size={compact ? 'lg' : 'xl'} className="mb-3" />
                             <h2 className={compact ? 'text-xl sm:text-2xl md:text-3xl mb-2' : 'text-2xl md:text-3xl lg:text-4xl mb-2'}>{currentPlayer.name}</h2>
                             {currentPlayer.role && <Badge status="active">{currentPlayer.role}</Badge>}
                             <p className="font-mono text-sm text-muted mt-3">{currentPlayer.description}</p>
@@ -1140,7 +1159,12 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                             <div className={`${compact ? 'text-center p-4 sm:p-5' : 'text-center p-4 md:p-5 lg:p-6'} border-3 border-accent bg-accent/10`}>
                                 <p className="font-mono text-xs md:text-sm text-muted mb-2">HIGHEST BID</p>
                                 <p className={compact ? 'font-mono text-3xl sm:text-4xl md:text-5xl font-bold text-accent mb-2' : 'font-mono text-4xl md:text-5xl lg:text-6xl font-bold text-accent mb-2'}>{formatCurrency(currentPlayerBids[0].amount)}</p>
-                                <p className={`font-mono font-bold ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`} style={{ color: currentPlayerBids[0].team?.color }}>{currentPlayerBids[0].team?.shortName}</p>
+                                {currentPlayerBids[0].team && (
+                                    <div className="flex items-center justify-center gap-3">
+                                        <TeamLogoMark team={currentPlayerBids[0].team} size={compact ? 'md' : 'lg'} />
+                                        <p className={`font-mono font-bold ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`} style={{ color: currentPlayerBids[0].team?.color }}>{currentPlayerBids[0].team?.shortName}</p>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className={`${compact ? 'text-center p-4 sm:p-5' : 'text-center p-4 md:p-5 lg:p-6'} border-3 border-border`}>
@@ -1161,8 +1185,13 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                     <div className={`grid gap-3 md:gap-4 ${compact ? 'xl:grid-cols-1' : 'sm:grid-cols-2'}`}>
                         {teams.map((team) => (
                             <Card key={team.id} className={`${compact ? 'p-3 sm:p-4' : 'p-4'} cursor-pointer hover:bg-accent/5 transition-colors`} style={{ borderColor: team.color }} onClick={() => setSelectedTeamForSquad(team)}>
-                                <p style={{ color: team.color }} className={`font-mono font-bold mb-1 ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`}>{team.shortName}</p>
-                                <p className="font-mono text-sm text-muted mb-3">{team.name}</p>
+                                <div className="mb-3 flex items-start gap-3">
+                                    <TeamLogoMark team={team} size={compact ? 'md' : 'lg'} />
+                                    <div>
+                                        <p style={{ color: team.color }} className={`font-mono font-bold mb-1 ${compact ? 'text-lg sm:text-xl' : 'text-xl'}`}>{team.shortName}</p>
+                                        <p className="font-mono text-sm text-muted">{team.name}</p>
+                                    </div>
+                                </div>
                                 <div className="space-y-1 text-sm">
                                     <div className="flex justify-between"><span className="font-mono text-muted">Budget:</span><span className="font-mono font-bold">{formatCurrency(team.budget)}</span></div>
                                     <div className="flex justify-between"><span className="font-mono text-muted">Squad:</span><span className="font-mono font-bold">{team.squadSize} players</span></div>
@@ -1262,7 +1291,11 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 </div>
                 {userTeam && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap mb-4">
-                        <p className="font-mono text-sm md:text-base">Your Team: <span style={{ color: userTeam.color }} className="font-bold text-lg md:text-xl">{userTeam.shortName}</span></p>
+                        <div className="flex items-center gap-3">
+                            <span className="font-mono text-sm md:text-base">Your Team:</span>
+                            <TeamLogoMark team={userTeam} size="md" />
+                            <span style={{ color: userTeam.color }} className="font-mono font-bold text-lg md:text-xl">{userTeam.shortName}</span>
+                        </div>
                         <p className="font-mono text-sm md:text-base">Budget: <span className="font-bold text-lg md:text-xl text-accent">{formatCurrency(userTeam.budget)}</span></p>
                         <p className="font-mono text-sm md:text-base">Squad: <span className="font-bold">{userTeam.squadSize} players</span></p>
                         <p className="font-mono text-sm md:text-base">RTM Cards: <span className="font-bold">{userTeam.rtmCardsRemaining}</span></p>
@@ -1366,9 +1399,12 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setSelectedTeamForSquad(null)}>
                     <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h2 className="font-mono text-2xl font-bold mb-1" style={{ color: selectedTeamForSquad.color }}>{selectedTeamForSquad.shortName}</h2>
-                                <p className="font-mono text-muted">{selectedTeamForSquad.name}</p>
+                            <div className="flex items-center gap-4">
+                                <TeamLogoMark team={selectedTeamForSquad} size="lg" />
+                                <div>
+                                    <h2 className="font-mono text-2xl font-bold mb-1" style={{ color: selectedTeamForSquad.color }}>{selectedTeamForSquad.shortName}</h2>
+                                    <p className="font-mono text-muted">{selectedTeamForSquad.name}</p>
+                                </div>
                             </div>
                             <Button variant="secondary" onClick={() => setSelectedTeamForSquad(null)}>CLOSE</Button>
                         </div>
@@ -1387,6 +1423,7 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                                     <div key={player.id} className="flex items-center justify-between p-4 border-2 border-border hover:border-accent/50 transition-colors">
                                         <div className="flex items-center gap-4">
                                             <span className="font-mono text-lg font-bold text-muted">#{index + 1}</span>
+                                            <PlayerAvatar player={player} size="md" />
                                             <div>
                                                 <p className="font-mono font-bold text-lg">{player.name}</p>
                                                 {player.role && <p className="font-mono text-sm text-muted">{player.role}</p>}
