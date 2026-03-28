@@ -10,6 +10,7 @@ type TeamLogoMarkProps = {
         logo?: string | null;
     };
     size?: 'sm' | 'md' | 'lg';
+    loadingStrategy?: 'eager' | 'lazy';
     className?: string;
 };
 
@@ -19,7 +20,12 @@ const SIZE_CLASSES: Record<NonNullable<TeamLogoMarkProps['size']>, string> = {
     lg: 'h-12 w-12 text-sm',
 };
 
-export default function TeamLogoMark({ team, size = 'md', className = '' }: TeamLogoMarkProps) {
+export default function TeamLogoMark({
+    team,
+    size = 'md',
+    loadingStrategy = 'eager',
+    className = '',
+}: TeamLogoMarkProps) {
     const [imageFailed, setImageFailed] = useState(false);
 
     useEffect(() => {
@@ -41,8 +47,9 @@ export default function TeamLogoMark({ team, size = 'md', className = '' }: Team
                     src={team.logo}
                     alt={`${team.name || team.shortName} logo`}
                     className="h-full w-full object-contain p-1"
-                    loading="lazy"
+                    loading={loadingStrategy}
                     decoding="async"
+                    fetchPriority={loadingStrategy === 'eager' ? 'high' : 'auto'}
                     onError={() => setImageFailed(true)}
                 />
             ) : (

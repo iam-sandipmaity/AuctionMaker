@@ -532,7 +532,14 @@ export default function AuctioneerControlPanel({
                                         className={`p-3 md:p-4 ${player.isStarPlayer ? 'border-yellow-500 border-4 bg-yellow-500/10' : ''}`}
                                     >
                                         <div className="flex items-start justify-between mb-2">
-                                            <div className="flex-1">
+                                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                <PlayerAvatar
+                                                    player={player}
+                                                    size="md"
+                                                    loadingStrategy="eager"
+                                                    className="hidden sm:flex"
+                                                />
+                                                <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     {player.isStarPlayer && <Badge status="live" className="text-xs">STAR</Badge>}
                                                     <h5 className="font-mono font-bold">{player.name}</h5>
@@ -563,6 +570,7 @@ export default function AuctioneerControlPanel({
                                                         </div>
                                                     </div>
                                                 )}
+                                                </div>
                                             </div>
                                             <Button
                                                 variant="primary"
