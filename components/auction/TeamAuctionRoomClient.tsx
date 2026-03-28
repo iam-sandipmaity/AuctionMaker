@@ -1091,6 +1091,32 @@ export default function TeamAuctionRoomClient({ initialAuction }: TeamAuctionRoo
                     </Card>
                 ))}
             </div>
+            {/* Export Players JSON button at the bottom of live auction */}
+            <div className="w-full flex justify-center mt-12 mb-8">
+                <Button
+                    variant="secondary"
+                    onClick={async () => {
+                        try {
+                            const res = await fetch(`/api/players/export?auctionId=${auction.id}`);
+                            if (!res.ok) {
+                                alert('Failed to export players list');
+                                return;
+                            }
+                            const blob = await res.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = 'players_export.json';
+                            link.click();
+                            window.URL.revokeObjectURL(url);
+                        } catch {
+                            alert('Error exporting players list');
+                        }
+                    }}
+                >
+                    EXPORT PLAYERS JSON
+                </Button>
+            </div>
         </div>
     );
 
