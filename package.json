@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node server.js",
     "postinstall": "prisma generate",
     "lint": "next lint",
+    "registry:generate": "node scripts/generate-player-career-registry.mjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio"
